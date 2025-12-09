@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS Admin (
     admin_id INTEGER(10) PRIMARY KEY,
     username CHAR(20) NOT NULL,
     password VARCHAR(20) NOT NULL,
-    status ENUM ('active', 'inactive') NOT NULL,
+    status ENUM ('active', 'inactive') NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Users (
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS Billing (
     FOREIGN KEY (appointment_id) REFERENCES Appointments(appointment_id)
 );
 
-CREATE TABLE IF NOT EXISTS Insurance Claims  (
+CREATE TABLE IF NOT EXISTS Insurance_Claims  (
     claim_id INTEGER(10) PRIMARY KEY,
     billing_id INTEGER(10),
     patient_id INTEGER(10),
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS Beds (
     FOREIGN KEY (ward_id) REFERENCES Wards(ward_id)
 );
 
-CREATE TABLE IF NOT EXISTS Bed Allocations (
+CREATE TABLE IF NOT EXISTS Bed_Allocations (
     allocation_id INTEGER(10) PRIMARY KEY,
     bed_id INTEGER(10),
     patient_id INTEGER(10),
@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS Visitors (
     FOREIGN KEY (patient_id) REFERENCES Patients(patient_id)
 );
 
-CREATE TABLE IF NOT EXISTS  Disease Predictions (
+CREATE TABLE IF NOT EXISTS  Disease_Predictions (
     prediction_id INTEGER(10) PRIMARY KEY,
     patient_id INTEGER(10),
     symptoms VARCHAR(255) NOT NULL,
@@ -185,17 +185,7 @@ CREATE TABLE IF NOT EXISTS  Disease Predictions (
     FOREIGN KEY (patient_id) REFERENCES Patients(patient_id)
 );
 
-CREATE TABLE IF NOT EXISTS Chatbot Logs (
-    chat_id INTEGER(10) PRIMARY KEY,
-    patient_id INTEGER(10) NULL,
-    user_message VARCHAR(255) NOT NULL,
-    bot_response VARCHAR(255) NOT NULL,
-    created_at DATETIME NOT NULL,
-
-    FOREIGN KEY (patient_id) REFERENCES Patients(patient_id)
-);
-
-
+CREATE TABLE IF NOT EXISTS Chatbot_Logs (
     notification_id INTEGER(10) PRIMARY KEY,
     user_id INTEGER(10),
     message VARCHAR(255) NOT NULL,
