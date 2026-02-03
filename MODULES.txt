@@ -1,0 +1,20 @@
+| Module # | Module Name                        |Done  |
+| -------- | ---------------------------------- |------|
+| 1        | Patient Management                 |✔    
+| 2        | Appointment Management             |✔    
+| 3        | Doctor Management                  |✔    
+| 4        | Staff Management                   |✔    
+| 5        | Billing Management                 |✔    
+| 6        | Insurance & Claims Management      |✔    
+| 7        | Report / Lab Management            |✔    
+| 8        | Bed & Ward Management              |✔    
+| 9        | Attendance Management              |✔    
+| 10       | Visitor Management                 |✔
+| 11       | Notifications                      |
+| 12       | Document Management                |✔
+| 13       | Donation Management                |
+| 14       | Disease Prediction (AI)            |
+| 15       | Chatbot (AI)                       |✔
+| 16       | Facial Recognition Attendance (AI) |✔
+| 17       | Diagnosis Prediction (AI)          |
+

@@ -1,0 +1,8 @@
+flask
+deepface
+mysql-connector-python
+numpy
+flask-cors
+tf-keras
+mediapipe
+opencv-python

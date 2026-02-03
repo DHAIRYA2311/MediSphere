@@ -1,0 +1,56 @@
+OFFLINE CONSULTATION WORKFLOW (OPD)
+Step-by-step flow
+Patient books OFFLINE appointment
+↓
+Appointment status = Confirmed
+↓
+Patient arrives → consultation happens
+↓
+Appointment status = Completed
+↓
+Invoice AUTO-GENERATED
+↓
+Payment (Cash / UPI / Card)
+↓
+END (unless admitted)
+Auto-create bill ONLY after consultation ends
+
+
+
+VIDEO / ONLINE CONSULTATION WORKFLOW
+
+This is almost same, with one small difference.
+
+Step-by-step flow
+Patient books VIDEO consultation
+↓
+Appointment status = Confirmed
+↓
+Payment REQUIRED before session (recommended)
+↓
+Video consultation happens
+↓
+Appointment status = Completed
+↓
+Invoice auto-generated (or marked Paid)
+↓
+END
+
+
+
+OFFLINE CONSULTATION → WARD ADMISSION (IPD)
+
+This is the most important flow you asked about.
+
+Correct medical workflow
+Offline consultation completed
+↓
+Doctor decides: Admission required
+↓
+Doctor clicks: "Admit to Ward"
+↓
+Ward & bed allocated
+↓
+Patient status = Admitted
+↓
+NEW billing cycle starts (IPD)
