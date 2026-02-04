@@ -3,22 +3,28 @@ import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserPlus, Search, Stethoscope, Clock, Award, Building } from 'lucide-react';
+import Skeleton, { CardSkeleton } from '../components/Skeleton';
 
 const DoctorsList = () => {
     const [doctors, setDoctors] = useState([]);
     const [filteredDoctors, setFilteredDoctors] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const { user } = useAuth();
     const isAdmin = user?.role === 'admin';
 
     useEffect(() => {
         const fetchDoctors = async () => {
-            const res = await api.get('doctors/list.php');
-            if (res.status === 'success') {
-                setDoctors(res.data);
-                setFilteredDoctors(res.data);
-            }
+            setLoading(true);
+            try {
+                const res = await api.get('doctors/list.php');
+                if (res.status === 'success') {
+                    setDoctors(res.data);
+                    setFilteredDoctors(res.data);
+                }
+            } catch (e) { console.error(e); }
+            finally { setLoading(false); }
         };
         fetchDoctors();
     }, []);
@@ -62,7 +68,15 @@ const DoctorsList = () => {
                 </div>
             </div>
 
-            {filteredDoctors.length === 0 ? (
+            {loading ? (
+                <div className="row g-4">
+                    {[...Array(8)].map((_, i) => (
+                        <div key={i} className="col-md-6 col-lg-4 col-xl-3">
+                            <CardSkeleton />
+                        </div>
+                    ))}
+                </div>
+            ) : filteredDoctors.length === 0 ? (
                 <div className="text-center py-5 text-muted">
                     <Stethoscope size={48} className="mb-3 opacity-25" />
                     <p>No doctors found matching your search.</p>

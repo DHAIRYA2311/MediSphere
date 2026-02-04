@@ -144,75 +144,90 @@ const ConsultationRoom = () => {
         });
     };
 
-    // GENERATE PDF
-    const generateAndUploadPrescription = async (apptId, patientName, patientId) => {
+    const generateAndUploadPrescription = async (apptId, patientName, patientId, shouldUpload = false) => {
         setIsGenerating(true);
         try {
-            // const { jsPDF } = require("jspdf"); // Removed in favor of top-level import
             const doc = new jsPDF();
-
-            // Branding
-            doc.setFontSize(22);
-            doc.setTextColor(40, 40, 40);
+            doc.setFontSize(22); doc.setTextColor(40, 40, 40);
             doc.text("Medisphere Hospital", 105, 20, null, null, "center");
-
-            doc.setFontSize(12);
-            doc.text("123 Health Avenue, Medicity", 105, 28, null, null, "center");
+            doc.setFontSize(12); doc.text("123 Health Avenue, Medicity", 105, 28, null, null, "center");
             doc.line(20, 35, 190, 35);
-
-            // Title
-            doc.setFontSize(16);
-            doc.text("PRESCRIPTION", 105, 50, null, null, "center");
-
-            // Details
+            doc.setFontSize(16); doc.text("PRESCRIPTION", 105, 50, null, null, "center");
             doc.setFontSize(11);
             doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 65);
             doc.text(`Patient: ${patientName}`, 20, 72);
             doc.text(`Doctor: ${user.name}`, 130, 72);
-
-            // Content
-            doc.setFontSize(12);
-            doc.text("Rx:", 20, 90);
-
+            doc.setFontSize(12); doc.text("Rx:", 20, 90);
             doc.setFont("helvetica", "normal");
             const splitText = doc.splitTextToSize(prescription, 170);
             doc.text(splitText, 20, 100);
 
-            // Footer
-            doc.setFontSize(10);
-            doc.text("This is a digitally generated prescription.", 105, 280, null, null, "center");
-
-            // Convert to Blob
-            const pdfBlob = doc.output('blob');
-
-            // Upload
-            const formData = new FormData();
-            formData.append('patient_id', patientId);
-            formData.append('type', 'Prescription');
-            formData.append('file', pdfBlob, `Prescription_${apptId}.pdf`);
-
-            const token = localStorage.getItem('token');
-            const uploadRes = await fetch('http://localhost/Medisphere-Project/backend/api/documents/upload.php', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-            const uploadJson = await uploadRes.json();
-
-            if (uploadJson.status !== 'success') {
-                console.error("Failed upload", uploadJson);
-                alert("Prescription generated but failed to save properly: " + (uploadJson.message || "Unknown error"));
+            if (shouldUpload) {
+                const pdfBlob = doc.output('blob');
+                const formData = new FormData();
+                formData.append('patient_id', patientId);
+                formData.append('type', 'Prescription');
+                formData.append('file', pdfBlob, `Prescription_${apptId}.pdf`);
+                const token = localStorage.getItem('token');
+                await fetch('http://localhost:8080/Medisphere-Project/backend/api/documents/upload.php', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+            } else {
+                doc.save(`Prescription_${apptId}.pdf`);
             }
+        } catch (e) { console.error(e); }
+        finally { setIsGenerating(false); }
+    };
 
-        } catch (e) {
-            console.error(e);
-            alert("Error generating prescription PDF: " + e.message);
-        } finally {
-            setIsGenerating(false);
-        }
+    const generateBillPDF = async (apptId, patientName, patientId, shouldUpload = false) => {
+        setIsGenerating(true);
+        try {
+            const doc = new jsPDF();
+            doc.setFontSize(22); doc.setTextColor(40, 40, 40);
+            doc.text("Medisphere Hospital", 105, 20, null, null, "center");
+            doc.setFontSize(10); doc.text("OFFICIAL INVOICE (ONLINE)", 105, 28, null, null, "center");
+            doc.line(20, 35, 190, 35);
+
+            doc.setFontSize(11);
+            doc.text(`Invoice Date: ${new Date().toLocaleDateString()}`, 20, 50);
+            doc.text(`Patient: ${patientName}`, 20, 57);
+            doc.text(`Appointment ID: #${apptId}`, 140, 50);
+            doc.text(`Payment Status: PAID`, 140, 57);
+
+            doc.setFillColor(245, 245, 245);
+            doc.rect(20, 70, 170, 10, 'F');
+            doc.setFontSize(12); doc.setTextColor(0);
+            doc.text("Description", 25, 77); doc.text("Amount", 160, 77);
+            doc.text("Consultation Fee (Online)", 25, 95); doc.text("$50.00", 160, 95);
+
+            doc.line(20, 110, 190, 110);
+            doc.setFontSize(14); doc.text("Total Paid:", 120, 120); doc.text("$50.00", 160, 120);
+            doc.setFontSize(10); doc.setTextColor(100);
+            doc.text("Thank you for choosing Medisphere.", 105, 150, null, null, "center");
+
+            if (shouldUpload) {
+                const pdfBlob = doc.output('blob');
+                const formData = new FormData();
+                formData.append('patient_id', patientId);
+                formData.append('type', 'Invoices');
+                formData.append('file', pdfBlob, `Bill_Online_${apptId}.pdf`);
+                const token = localStorage.getItem('token');
+                await fetch('http://localhost:8080/Medisphere-Project/backend/api/documents/upload.php', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+            } else {
+                doc.save(`Invoice_${apptId}.pdf`);
+            }
+        } catch (e) { console.error(e); }
+        finally { setIsGenerating(false); }
     };
 
     const handleDoctorFinish = async () => {
+        if (isGenerating) return;
         if (!prescription.trim()) {
             if (!window.confirm("No prescription written. Are you sure you want to finish without one?")) return;
         }
@@ -222,13 +237,14 @@ const ConsultationRoom = () => {
             if (statusRes.status !== 'success') { alert("Error details"); return; }
             const apptData = statusRes.data;
             const apptId = apptData.appointment_id;
-            const patientId = apptData.patient_id; // Check status api must return this
+            const patientId = apptData.patient_id;
             const patientName = apptData.patient_name || "Patient";
 
-            // 1. Generate & Upload if content exists
-            if (prescription.trim()) {
-                await generateAndUploadPrescription(apptId, patientName, patientId);
-            }
+            // 1. Generate & Upload PDFs
+            await Promise.all([
+                prescription.trim() ? generateAndUploadPrescription(apptId, patientName, patientId, true) : Promise.resolve(),
+                generateBillPDF(apptId, patientName, patientId, true)
+            ]);
 
             // 2. Complete Appointment
             const res = await api.post('appointments/complete.php', {

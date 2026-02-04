@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { TableSkeleton } from '../components/Skeleton';
 
 const ReportsList = () => {
     const { user } = useAuth();
@@ -8,6 +9,7 @@ const ReportsList = () => {
     const [showModal, setShowModal] = useState(false);
     const [patients, setPatients] = useState([]);
     const [doctors, setDoctors] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -29,6 +31,7 @@ const ReportsList = () => {
     }, [user]);
 
     const fetchReports = async () => {
+        setLoading(true);
         try {
             const res = await api.get('reports/list.php');
             if (res.status === 'success') {
@@ -36,6 +39,8 @@ const ReportsList = () => {
             }
         } catch (error) {
             console.error("Failed to fetch reports", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -128,7 +133,18 @@ const ReportsList = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {reports.length > 0 ? (
+                                {loading ? (
+                                    [...Array(6)].map((_, i) => (
+                                        <tr key={i}>
+                                            <td className="ps-4"><TableSkeleton rows={1} cols={1} /></td>
+                                            <td><TableSkeleton rows={1} cols={1} /></td>
+                                            <td><TableSkeleton rows={1} cols={1} /></td>
+                                            <td><TableSkeleton rows={1} cols={1} /></td>
+                                            <td><TableSkeleton rows={1} cols={1} /></td>
+                                            <td className="text-end pe-4"><TableSkeleton rows={1} cols={1} /></td>
+                                        </tr>
+                                    ))
+                                ) : reports.length > 0 ? (
                                     reports.map((report) => (
                                         <tr key={report.report_id}>
                                             <td className="ps-4 fw-bold">#{report.report_id}</td>

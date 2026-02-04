@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Search, Bell, Menu, User, Settings, LogOut } from 'lucide-react';
+import NotificationDropdown from './NotificationDropdown';
 
 const Navbar = ({ toggleSidebar, collapsed }) => {
     const { user, logout } = useAuth();
@@ -25,13 +26,8 @@ const Navbar = ({ toggleSidebar, collapsed }) => {
             {/* Right Side: Actions */}
             <ul className="navbar-nav ms-auto align-items-center gap-3">
                 {/* Notifications */}
-                <li className="nav-item position-relative">
-                    <button className="btn btn-light rounded-circle p-2 position-relative text-muted">
-                        <Bell size={20} />
-                        <span className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                            <span className="visually-hidden">New alerts</span>
-                        </span>
-                    </button>
+                <li className="nav-item">
+                    <NotificationDropdown />
                 </li>
 
                 {/* Profile Dropdown */}

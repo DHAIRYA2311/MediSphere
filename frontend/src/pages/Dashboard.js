@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import KPICard from '../components/KPICard';
+import Skeleton from '../components/Skeleton';
 import {
     Users,
     Stethoscope,
@@ -22,11 +23,10 @@ import {
     Tooltip,
     ResponsiveContainer,
     BarChart,
-    Bar,
-    Legend
+    Bar
 } from 'recharts';
 
-// Mock data for charts (replace with real API data later)
+// Mock data for charts
 const revenueData = [
     { name: 'Jan', revenue: 4000 },
     { name: 'Feb', revenue: 3000 },
@@ -70,13 +70,6 @@ const Dashboard = () => {
         if (user) fetchStats();
     }, [user]);
 
-    if (loading) {
-        return <div className="p-5 text-center text-muted">Loading dashboard...</div>;
-    }
-
-    // Helper to extract numeric value from string (e.g. "$1200" -> 1200) or keep as is
-    const formatVal = (val) => val;
-
     return (
         <div className="container-fluid py-4 fade-in">
             {/* Header */}
@@ -98,94 +91,100 @@ const Dashboard = () => {
             </div>
 
             {/* KPI Cards Grid */}
-            {stats && (
-                <div className="row g-4 mb-5">
-                    {role === 'admin' && (
-                        <>
-                            <div className="col-md-3">
-                                <KPICard title="Total Revenue" value={`$${stats.total_revenue || 0}`} icon={CreditCard} color="success" trend={12.5} />
-                            </div>
-                            <div className="col-md-3">
-                                <KPICard title="Total Appointments" value={stats.total_appointments} icon={Calendar} color="primary" trend={8.2} />
-                            </div>
-                            <div className="col-md-3">
-                                <KPICard title="Total Patients" value={stats.total_patients} icon={Activity} color="info" trend={5.4} />
-                            </div>
-                            <div className="col-md-3">
-                                <KPICard title="Active Doctors" value={stats.total_doctors} icon={Stethoscope} color="warning" subtext={`${stats.attendance || '0'} staff online`} />
-                            </div>
-                        </>
-                    )}
-                    {role === 'doctor' && (
-                        <>
-                            <div className="col-md-4">
-                                <KPICard title="My Appointments" value={stats.my_appointments} icon={Calendar} color="primary" />
-                            </div>
-                            <div className="col-md-4">
-                                <KPICard title="Pending Requests" value={stats.pending_appointments} icon={Clock} color="warning" />
-                            </div>
-                            <div className="col-md-4">
-                                <KPICard title="Todays Schedule" value={stats.today_appointments} icon={UserCheck} color="success" />
-                            </div>
-                        </>
-                    )}
-                    {role === 'patient' && (
-                        <>
-                            <div className="col-md-6">
-                                <KPICard title="Upcoming Appointments" value={stats.upcoming_appointments} icon={Calendar} color="primary" subtext="Check your schedule" />
-                            </div>
-                            <div className="col-md-6">
-                                <KPICard title="Medical Records" value={stats.my_appointments} icon={FileText} color="info" subtext="Total history" />
-                            </div>
-                        </>
-                    )}
-                </div>
-            )}
+            <div className="row g-4 mb-5">
+                {role === 'admin' && (
+                    <>
+                        <div className="col-md-3">
+                            <KPICard loading={loading} title="Total Revenue" value={`$${stats?.total_revenue || 0}`} icon={CreditCard} color="success" trend={12.5} />
+                        </div>
+                        <div className="col-md-3">
+                            <KPICard loading={loading} title="Total Appointments" value={stats?.total_appointments} icon={Calendar} color="primary" trend={8.2} />
+                        </div>
+                        <div className="col-md-3">
+                            <KPICard loading={loading} title="Total Patients" value={stats?.total_patients} icon={Activity} color="info" trend={5.4} />
+                        </div>
+                        <div className="col-md-3">
+                            <KPICard loading={loading} title="Active Doctors" value={stats?.total_doctors} icon={Stethoscope} color="warning" subtext={`${stats?.attendance || '0'} staff online`} />
+                        </div>
+                    </>
+                )}
+                {role === 'doctor' && (
+                    <>
+                        <div className="col-md-4">
+                            <KPICard loading={loading} title="My Appointments" value={stats?.my_appointments} icon={Calendar} color="primary" />
+                        </div>
+                        <div className="col-md-4">
+                            <KPICard loading={loading} title="Pending Requests" value={stats?.pending_appointments} icon={Clock} color="warning" />
+                        </div>
+                        <div className="col-md-4">
+                            <KPICard loading={loading} title="Todays Schedule" value={stats?.today_appointments} icon={UserCheck} color="success" />
+                        </div>
+                    </>
+                )}
+                {role === 'patient' && (
+                    <>
+                        <div className="col-md-6">
+                            <KPICard loading={loading} title="Upcoming Appointments" value={stats?.upcoming_appointments} icon={Calendar} color="primary" subtext="Check your schedule" />
+                        </div>
+                        <div className="col-md-6">
+                            <KPICard loading={loading} title="Medical Records" value={stats?.my_appointments} icon={FileText} color="info" subtext="Total history" />
+                        </div>
+                    </>
+                )}
+            </div>
 
-            {/* Charts Section (Admin Only for now, customizable) */}
+            {/* Charts Section */}
             {role === 'admin' && (
                 <div className="row g-4 mb-4">
                     <div className="col-lg-8">
                         <div className="card-enterprise border-0 shadow-sm p-4 h-100">
                             <h5 className="fw-bold mb-4">Revenue Analytics</h5>
-                            <div style={{ width: '100%', height: 300 }}>
-                                <ResponsiveContainer>
-                                    <AreaChart data={revenueData}>
-                                        <defs>
-                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
-                                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }}
-                                        />
-                                        <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
+                            {loading ? (
+                                <Skeleton className="skeleton-rect" style={{ height: '300px' }} />
+                            ) : (
+                                <div style={{ width: '100%', height: 300 }}>
+                                    <ResponsiveContainer>
+                                        <AreaChart data={revenueData}>
+                                            <defs>
+                                                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
+                                                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+                                            />
+                                            <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="col-lg-4">
                         <div className="card-enterprise border-0 shadow-sm p-4 h-100">
                             <h5 className="fw-bold mb-4">Patient Visits</h5>
-                            <div style={{ width: '100%', height: 300 }}>
-                                <ResponsiveContainer>
-                                    <BarChart data={patientTrendsData}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                                        <Tooltip
-                                            cursor={{ fill: '#f1f5f9' }}
-                                            contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        />
-                                        <Bar dataKey="patients" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+                            {loading ? (
+                                <Skeleton className="skeleton-rect" style={{ height: '300px' }} />
+                            ) : (
+                                <div style={{ width: '100%', height: 300 }}>
+                                    <ResponsiveContainer>
+                                        <BarChart data={patientTrendsData}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                            <Tooltip
+                                                cursor={{ fill: '#f1f5f9' }}
+                                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            />
+                                            <Bar dataKey="patients" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

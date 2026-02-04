@@ -1,25 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+    Camera, UserCheck, ShieldAlert, RefreshCw,
+    Maximize2, Zap, User, Clock, CheckCircle2, AlertCircle,
+    ScanFace, ShieldCheck, Fingerprint, ArrowRight, Save, X, Activity
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const FaceAttendance = () => {
-    const [status, setStatus] = useState('');
+    const [mode, setMode] = useState('attendance'); // 'attendance' | 'register'
+    const [status, setStatus] = useState(''); // '', 'loading', 'success', 'warning', 'error'
     const [message, setMessage] = useState('');
     const [cameraActive, setCameraActive] = useState(true);
+    const [scanProgress, setScanProgress] = useState(0);
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [regName, setRegName] = useState('');
 
     const SERVICE_URL = "http://localhost:5001";
 
-    const quotes = [
-        "Smile Please! 😊",
-        "Work Hard, Dream Big! 💪",
-        "Make Today Amazing! ✨",
-        "Your Smile is Contagious! 😃",
-        "Focus on the Good! 🌟",
-        "Believe in Yourself! 🚀"
-    ];
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const markAttendance = async () => {
         setStatus('loading');
-        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-        setMessage(`Scanning... ${randomQuote}`);
+        setMessage('Initializing Biometric Validation...');
+        setScanProgress(0);
+
+        const progressInterval = setInterval(() => {
+            setScanProgress(prev => Math.min(prev + 5, 95));
+        }, 100);
 
         try {
             const res = await fetch(`${SERVICE_URL}/mark_attendance`, {
@@ -27,10 +37,13 @@ const FaceAttendance = () => {
             });
             const data = await res.json();
 
+            clearInterval(progressInterval);
+            setScanProgress(100);
+
             if (data.status === 'success') {
                 setStatus('success');
                 setMessage(data.msg);
-                setCameraActive(false); // Stop camera on success
+                setTimeout(() => setCameraActive(false), 2000);
             } else if (data.status === 'warning') {
                 setStatus('warning');
                 setMessage(data.msg);
@@ -39,104 +52,276 @@ const FaceAttendance = () => {
                 setMessage(data.msg);
             }
         } catch (e) {
+            clearInterval(progressInterval);
             setStatus('error');
-            setMessage('Error connecting to Face Service');
+            setMessage('Face AI Service Offline.');
+        }
+    };
+
+    const registerFace = async () => {
+        if (!regName.trim()) {
+            setStatus('error');
+            setMessage('Please enter a name for registration.');
+            return;
+        }
+
+        setStatus('loading');
+        setMessage(`Capturing Biometrics for ${regName}...`);
+
+        try {
+            const res = await fetch(`${SERVICE_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: regName })
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                setStatus('success');
+                setMessage(data.msg);
+                setRegName('');
+                setTimeout(() => {
+                    setMode('attendance');
+                    resetScanner();
+                }, 2000);
+            } else {
+                setStatus('error');
+                setMessage(data.msg);
+            }
+        } catch (e) {
+            setStatus('error');
+            setMessage('Service Offline.');
         }
     };
 
     const resetScanner = () => {
         setStatus('');
         setMessage('');
+        setScanProgress(0);
         setCameraActive(true);
     };
 
     return (
-        <div className="container py-5 fade-in">
-            <div className="row justify-content-center">
-                <div className="col-md-8 col-lg-6">
-                    <div className="card shadow-lg border-0 rounded-4 overflow-hidden">
-                        <div className="card-header bg-dark text-white text-center p-4">
-                            <h3 className="fw-bold mb-0">
-                                <i className="bi bi-person-bounding-box me-2"></i> Face Attendance
-                            </h3>
-                            <small className="text-white-50">Kiosk Mode - Please Stand Still</small>
-                        </div>
+        <div className="container-fluid py-5 bg-light min-vh-100 d-flex align-items-center justify-content-center">
+            <div className="w-100" style={{ maxWidth: '1100px' }}>
 
-                        <div className="card-body p-0 position-relative text-center bg-black" style={{ minHeight: '300px' }}>
-                            {cameraActive ? (
+                {/* Header Section */}
+                <div className="d-flex justify-content-between align-items-end mb-4 px-2">
+                    <div>
+                        <h2 className="fw-bold text-dark mb-1">Medisphere Biometrics</h2>
+                        <p className="text-muted small mb-0">Intellectual Face Recognition & Attendance System</p>
+                    </div>
+                    <div className="d-flex bg-white rounded-3 p-1 shadow-sm border">
+                        <button
+                            className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${mode === 'attendance' ? 'bg-primary text-white shadow-sm' : 'text-muted'}`}
+                            onClick={() => { setMode('attendance'); resetScanner(); }}
+                        >
+                            Attendance
+                        </button>
+                        <button
+                            className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${mode === 'register' ? 'bg-primary text-white shadow-sm' : 'text-muted'}`}
+                            onClick={() => { setMode('register'); resetScanner(); }}
+                        >
+                            Register Face
+                        </button>
+                    </div>
+                </div>
+
+                <div className="row g-0 shadow-2xl rounded-4 overflow-hidden border bg-white" style={{ minHeight: '550px' }}>
+
+                    {/* LEFT PANEL: The Scanner Viewport */}
+                    <div className="col-lg-7 bg-black position-relative border-end border-white border-opacity-10" style={{ minHeight: '450px' }}>
+                        {cameraActive ? (
+                            <>
                                 <img
                                     src={`${SERVICE_URL}/video_feed?t=${Date.now()}`}
-                                    alt="Live Feed"
-                                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                                    alt="Biometric Feed"
+                                    className="w-100 h-100 object-fit-cover opacity-90"
                                     onError={(e) => {
                                         e.target.style.display = 'none';
-                                        alert("Camera feed not available. Make sure the Python Service is running!");
+                                        setStatus('error');
+                                        setMessage("Camera Hardware Not Found");
                                     }}
                                 />
-                            ) : (
-                                <div className="d-flex flex-column align-items-center justify-content-center h-100 text-white p-5" style={{ minHeight: '300px' }}>
-                                    <h1 className="display-1 text-success mb-3"><i className="bi bi-check-lg"></i></h1>
-                                    <h4 className="fw-bold">Attendance Marked</h4>
-                                    <p className="text-white-50 small">Camera turned off</p>
-                                </div>
-                            )}
-                        </div>
+                                {/* HUD Layer */}
+                                <div className="position-absolute inset-0 w-100 h-100 p-4 d-flex flex-column justify-content-between pointer-events-none z-1">
+                                    <div className="d-flex justify-content-between align-items-start">
+                                        <div className="bg-black bg-opacity-40 backdrop-blur-sm border border-white border-opacity-10 p-2 rounded-2">
+                                            <div className="d-flex align-items-center gap-2 text-primary small fw-bold tracking-widest font-monospace">
+                                                <div className="spinner-grow spinner-grow-sm"></div>
+                                                LIVE_ENCRYPTION_ON
+                                            </div>
+                                        </div>
+                                        <div className="text-end font-monospace text-white text-shadow">
+                                            <div className="h4 mb-0 fw-bold">{currentTime.toLocaleTimeString()}</div>
+                                            <div className="small opacity-50">{currentTime.toLocaleDateString()}</div>
+                                        </div>
+                                    </div>
 
-                        <div className="card-footer p-4 bg-white text-center">
+                                    {/* Viewport Brackets */}
+                                    <div className="position-absolute top-50 start-50 translate-middle w-75 h-75 border-cyan-glow">
+                                        <div className="pos-abs top-0 start-0 w-8 h-8 border-t-2 border-l-2 border-primary"></div>
+                                        <div className="pos-abs top-0 end-0 w-8 h-8 border-t-2 border-r-2 border-primary"></div>
+                                        <div className="pos-abs bottom-0 start-0 w-8 h-8 border-b-2 border-l-2 border-primary"></div>
+                                        <div className="pos-abs bottom-0 end-0 w-8 h-8 border-b-2 border-r-2 border-primary"></div>
 
-                            {status === 'error' && (
-                                <div className="alert alert-danger mb-3 rounded-pill">
-                                    <i className="bi bi-exclamation-triangle-fill me-2"></i> {message}
-                                </div>
-                            )}
+                                        {/* Horizontal Scan Line */}
+                                        {status === 'loading' && (
+                                            <motion.div
+                                                animate={{ top: ['0%', '100%', '0%'] }}
+                                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                                className="position-absolute w-100 bg-primary shadow-glow-primary"
+                                                style={{ height: '2px', left: 0 }}
+                                            />
+                                        )}
+                                    </div>
 
-                            {status === 'warning' && (
-                                <div className="alert alert-warning mb-3 rounded-pill">
-                                    <i className="bi bi-clock-history me-2"></i> {message}
-                                </div>
-                            )}
-
-                            {status === 'success' && (
-                                <div className="alert alert-success mb-3 rounded-3">
-                                    <div className="d-flex align-items-center justify-content-center">
-                                        <i className="bi bi-check-circle-fill fs-1 me-3"></i>
-                                        <div className="text-start">
-                                            <h5 className="mb-0 fw-bold">Success!</h5>
-                                            <p className="mb-0 small">{message}</p>
+                                    <div className="d-flex justify-content-center">
+                                        <div className="bg-black bg-opacity-60 backdrop-blur-md px-4 py-2 rounded-pill border border-white border-opacity-10 text-white small font-monospace tracking-tight">
+                                            {mode === 'attendance' ? 'SYSTEM_WAITING: AUTH_TRIGGER_REQUIRED' : 'SYSTEM_WAITING: BIOMETRIC_ENROLLMENT'}
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            </>
+                        ) : (
+                            <div className="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white bg-dark p-5">
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="p-4 bg-success bg-opacity-10 rounded-circle mb-4 border border-success border-opacity-20">
+                                    <CheckCircle2 size={80} className="text-success" />
+                                </motion.div>
+                                <h3 className="fw-bold text-success">Identity Confirmed</h3>
+                                <p className="text-muted text-center max-w-sm">Recognition successful. Your participation has been securely logged in the master ledger.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* RIGHT PANEL: Controls & Info */}
+                    <div className="col-lg-5 p-5 d-flex flex-column justify-content-between bg-white">
+                        <div>
+                            <div className="d-flex align-items-center gap-3 mb-4">
+                                <div className="bg-primary bg-opacity-10 p-3 rounded-4">
+                                    {mode === 'attendance' ? <ScanFace size={28} className="text-primary" /> : <UserCheck size={28} className="text-primary" />}
+                                </div>
+                                <div>
+                                    <h4 className="fw-bold mb-0">{mode === 'attendance' ? 'Attendance Check' : 'Face Enrollment'}</h4>
+                                    <p className="text-muted small mb-0">{mode === 'attendance' ? 'Biometric verification protocol' : 'Digital identity registration'}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-light p-4 rounded-4 border mb-4">
+                                <h6 className="fw-bold text-dark small text-uppercase tracking-wider mb-3">Protocol Requirements</h6>
+                                <ul className="list-unstyled small text-secondary mb-0">
+                                    <li className="d-flex gap-3 mb-3">
+                                        <div className="text-primary"><Activity size={16} /></div>
+                                        <span>Stay within 1-2 feet of the camera for high-accuracy feature extraction.</span>
+                                    </li>
+                                    <li className="d-flex gap-3 mb-3">
+                                        <div className="text-primary"><Clock size={16} /></div>
+                                        <span>Authentication typically completes in under 2.5 seconds.</span>
+                                    </li>
+                                    <li className="d-flex gap-3">
+                                        <div className="text-primary"><ShieldCheck size={16} /></div>
+                                        <span>All data is processed using local GPU-accelerated neural networks.</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            {/* Status Area */}
+                            <AnimatePresence mode="wait">
+                                {message && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className={`p-3 rounded-3 mb-4 d-flex align-items-start gap-3 border ${status === 'success' ? 'bg-success bg-opacity-5 text-success border-success border-opacity-20' :
+                                            status === 'warning' ? 'bg-warning bg-opacity-5 text-dark border-warning border-opacity-20' :
+                                                status === 'error' ? 'bg-danger bg-opacity-5 text-danger border-danger border-opacity-20' :
+                                                    'bg-primary bg-opacity-5 text-primary border-primary border-opacity-20'
+                                            }`}
+                                    >
+                                        <div className="mt-1 shadow-sm">
+                                            {status === 'loading' ? <RefreshCw className="animate-spin" size={18} /> :
+                                                status === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                                        </div>
+                                        <div className="flex-grow-1">
+                                            <div className="fw-bold small text-uppercase mb-1">{status === 'loading' ? 'Encrypting...' : status}</div>
+                                            <div className="small opacity-80">{message}</div>
+                                            {status === 'loading' && mode === 'attendance' && (
+                                                <div className="progress mt-2 bg-primary bg-opacity-10" style={{ height: '3px' }}>
+                                                    <motion.div
+                                                        className="progress-bar bg-primary shadow-sm"
+                                                        style={{ width: `${scanProgress}%` }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="mt-auto">
+                            {mode === 'register' ? (
+                                <div className="mb-4">
+                                    <label className="form-label small fw-bold text-secondary">FULL NAME FOR SYSTEM IDENTIFIER</label>
+                                    <div className="input-group input-group-lg shadow-sm">
+                                        <span className="input-group-text bg-white border-end-0"><User size={20} className="text-muted" /></span>
+                                        <input
+                                            type="text"
+                                            className="form-control bg-white border-start-0 fs-6 ps-1"
+                                            placeholder="e.g. Dr. Jane Smith"
+                                            value={regName}
+                                            onChange={(e) => setRegName(e.target.value)}
+                                            disabled={status === 'loading'}
+                                        />
+                                    </div>
+                                </div>
+                            ) : null}
 
                             <div className="d-grid gap-3">
-                                {!cameraActive && status === 'success' ? (
-                                    <button
-                                        onClick={resetScanner}
-                                        className="btn btn-outline-primary btn-lg rounded-pill shadow-sm py-3"
-                                    >
-                                        <i className="bi bi-arrow-clockwise me-2"></i> Scan Next Person
+                                {!cameraActive ? (
+                                    <button onClick={resetScanner} className="btn btn-dark btn-lg py-3 fw-bold rounded-3 shadow d-flex align-items-center justify-content-center gap-2">
+                                        <RefreshCw size={20} /> Reset Scanner
                                     </button>
                                 ) : (
                                     <button
-                                        onClick={markAttendance}
-                                        className="btn btn-primary btn-lg rounded-pill shadow-sm py-3"
+                                        onClick={mode === 'attendance' ? markAttendance : registerFace}
+                                        className="btn btn-primary btn-lg py-3 fw-bold rounded-3 shadow d-flex align-items-center justify-content-center gap-2 group"
                                         disabled={status === 'loading'}
                                     >
-                                        {status === 'loading' ? (
-                                            <span><span className="spinner-grow spinner-grow-sm me-2"></span>{message.includes('Scanning') ? message : 'Processing...'}</span>
-                                        ) : (
-                                            <><i className="bi bi-camera-fill me-2"></i> Mark Attendance</>
+                                        {status === 'loading' ? 'PROCESSING...' : (
+                                            <>
+                                                {mode === 'attendance' ? (
+                                                    <>IDENTIFY ME <ArrowRight size={20} className="group-hover-translate-x-1 transition-all" /></>
+                                                ) : (
+                                                    <>ENROLL BIOMETRICS <Save size={20} /></>
+                                                )}
+                                            </>
                                         )}
                                     </button>
                                 )}
                             </div>
+                            <div className="text-center mt-3">
+                                <span className="text-muted smaller fw-bold tracking-widest opacity-50"><Fingerprint size={12} className="me-1 mb-1" /> SECURE_ID_V3.0</span>
+                            </div>
                         </div>
-                    </div>
-                    <div className="text-center mt-4 text-muted small">
-                        {cameraActive ? 'Ensure you are facing the camera directly.' : 'Camera is inactive to save resources.'}
                     </div>
                 </div>
             </div>
+
+            <style>{`
+                .pos-abs { position: absolute; }
+                .border-cyan-glow { pointer-events: none; border: 1px solid rgba(13, 110, 253, 0.1); }
+                .shadow-glow-primary { box-shadow: 0 0 20px rgba(13, 110, 253, 0.6); }
+                .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15); }
+                .animate-spin { animation: spin 1s linear infinite; }
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+                .smaller { font-size: 0.65rem; }
+                .group-hover-translate-x-1:hover svg { transform: translateX(4px); }
+                .w-8 { width: 32px; }
+                .h-8 { height: 32px; }
+            `}</style>
         </div>
     );
 };

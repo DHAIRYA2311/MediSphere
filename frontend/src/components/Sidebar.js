@@ -19,7 +19,8 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
-    Gift
+    Gift,
+    Scan
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -56,6 +57,8 @@ const Sidebar = ({ collapsed, toggleCollapsed }) => {
             { path: '/insurance', label: 'Insurance & Claims', icon: ShieldCheck, roles: ['admin', 'receptionist'] },
             { path: '/donations', label: 'Donations', icon: Gift, roles: ['admin', 'receptionist', 'doctor', 'patient'] },
             { path: '/documents', label: 'Documents', icon: FileText, roles: ['admin', 'doctor', 'receptionist'] },
+            { path: '/ai-prediction', label: 'AI Diagnosis', icon: Stethoscope, roles: ['admin', 'doctor', 'patient'] },
+            { path: '/xray-analysis', label: 'X-Ray Analysis', icon: Scan, roles: ['admin', 'doctor'] },
 
             // Patient Specific
             { path: '/book-appointment', label: 'Book Appointment', icon: Calendar, roles: ['patient'] },
@@ -126,7 +129,7 @@ const Sidebar = ({ collapsed, toggleCollapsed }) => {
             </div>
 
             {/* Nav Items */}
-            <div className="flex-grow-1 overflow-y-auto overflow-x-hidden px-2 py-2 thin-scrollbar">
+            <div className="flex-grow-1 overflow-y-auto overflow-x-hidden px-2 py-2 no-scrollbar">
                 <ul className="nav nav-pills flex-column gap-1">
                     {navItems.map((item) => (
                         <li className="nav-item" key={item.path}>

@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable';
 import { Eye, FileText } from 'lucide-react';
+import { TableSkeleton } from '../components/Skeleton';
 
 const PatientsList = () => {
     const [patients, setPatients] = useState([]);
@@ -98,7 +99,7 @@ const PatientsList = () => {
             </div>
 
             {loading ? (
-                <div className="text-center py-5 text-muted">Loading patients...</div>
+                <TableSkeleton rows={10} cols={4} />
             ) : (
                 <DataTable
                     title="All Patients"

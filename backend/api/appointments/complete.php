@@ -37,9 +37,9 @@ try {
         // Simple logic: Online = $50, In-Person = $80
         $amount = ($appt['booking_method'] === 'Online') ? 50.00 : 80.00;
         
-        // 3. Create Bill
-        $stmt = $pdo->prepare("INSERT INTO Billing (patient_id, appointment_id, total_amount, paid_amount, payment_status, payment_date) VALUES (?, ?, ?, 0, 'Pending', CURDATE())");
-        $stmt->execute([$appt['patient_id'], $appointment_id, $amount]);
+        // 3. Create Bill (Automatically Paid as per user request)
+        $stmt = $pdo->prepare("INSERT INTO Billing (patient_id, appointment_id, total_amount, paid_amount, payment_status, payment_date) VALUES (?, ?, ?, ?, 'Paid', NOW())");
+        $stmt->execute([$appt['patient_id'], $appointment_id, $amount, $amount]);
     }
 
     $pdo->commit();

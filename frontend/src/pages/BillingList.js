@@ -6,6 +6,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Download, Plus, FileText, DollarSign, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TableSkeleton } from '../components/Skeleton';
 
 const BillingList = () => {
     const { user } = useAuth();
@@ -145,8 +146,8 @@ const BillingList = () => {
             sortable: true,
             render: (row) => (
                 <span className={`badge ${row.payment_status === 'Paid' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' :
-                        row.payment_status === 'Pending' ? 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25' :
-                            'bg-secondary bg-opacity-10 text-secondary'
+                    row.payment_status === 'Pending' ? 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25' :
+                        'bg-secondary bg-opacity-10 text-secondary'
                     } rounded-pill px-3 py-1`}>
                     {row.payment_status}
                 </span>
@@ -173,7 +174,7 @@ const BillingList = () => {
             </div>
 
             {loading ? (
-                <div className="text-center py-5 text-muted">Loading bills...</div>
+                <TableSkeleton rows={8} cols={5} />
             ) : (
                 <DataTable
                     title="Invoices"

@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import time
-import random
+from model import load_model, predict_image
 
 app = Flask(__name__)
 CORS(app)
@@ -11,55 +11,12 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# SYSTEM PROMPT (For reference when integrating real VLM)
-SYSTEM_PROMPT = """
-You are a medical imaging analysis assistant designed to support licensed doctors.
-Analyze the uploaded X-ray image and provide a clinical decision-support report.
-Follow these strict rules:
-1. Do NOT provide a final diagnosis.
-2. Do NOT address the patient directly.
-3. The output is intended ONLY for a medical professional.
-4. Highlight possible abnormalities, patterns, or anomalies visible in the X-ray.
-5. If findings are uncertain, clearly state uncertainty.
-6. Provide confidence percentages only as reference, not conclusions.
-7. Recommend further tests or specialist review if applicable.
-8. Use clear, structured medical language.
+# Load AI Model on Startup
+print("Initializing AI Model...")
+model, device = load_model()
+print("AI Model Ready.")
 
-Output format:
-- Observations
-- Possible Findings (AI-assisted)
-- Confidence Score (per finding)
-- Limitations of Analysis
-- Suggested Next Steps
 
-Add a disclaimer:
-"This AI-generated analysis is for clinical assistance only and must be reviewed by a licensed doctor before any medical decision."
-"""
-
-# MOCK DATASETS for Demo
-MOCK_ANALYSES = [
-    {
-        "observations": "The cardiac silhouette is normal in size. The mediastinal contours are unremarkable. There is increased opacity in the right lower lobe.",
-        "findings": ["Potential Right Lower Lobe Pneumonia", "Opacity in right lung base"],
-        "confidence": "85%",
-        "limitations": "Image quality is slightly grainy. Lateral view not provided.",
-        "next_steps": "Clinical correlation with symptoms (fever, cough). Recommend follow-up Chest X-ray or CT if symptoms persist."
-    },
-    {
-        "observations": "Clear lung fields bilaterally. No pleural effusion or pneumothorax. Cardiac silhouette size is within normal limits. Osseous structures are intact.",
-        "findings": ["No significant acute radiographic abnormalities"],
-        "confidence": "98%",
-        "limitations": "None.",
-        "next_steps": "Routine follow-up as clinically indicated."
-    },
-    {
-        "observations": "There is a linear lucency seen in the mid-shaft of the left clavicle with slight displacement.",
-        "findings": ["Mid-shaft clavicle fracture"],
-        "confidence": "92%",
-        "limitations": "Soft tissue swelling complicates underlying visibility.",
-        "next_steps": "Orthopedic consultation. Sling immobilization."
-    }
-]
 
 @app.route('/analyze_xray', methods=['POST'])
 def analyze_xray():
@@ -71,40 +28,71 @@ def analyze_xray():
     save_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(save_path)
 
-    # SIMULATION DELAY (To mimic AI processing)
-    time.sleep(3)
+    try:
+        # REAL INFERENCE
+        predictions = predict_image(model, device, save_path)
+        
+        # Generate Text Report based on predictions
+        report_text = generate_report(predictions)
+        
+        return jsonify({
+            "status": "success",
+            "analysis": report_text,
+            "raw_predictions": predictions
+        })
 
-    # In a real scenario, we would send 'save_path' and 'SYSTEM_PROMPT' to OpenAI/Gemini API here.
-    # For now, we return a mock response based on random selection or simulation.
-    
-    scenario = random.choice(MOCK_ANALYSES)
+    except Exception as e:
+        print(f"Inference Error: {e}")
+        return jsonify({"status": "error", "msg": str(e)}), 500
 
-    response_text = f"""
+def generate_report(predictions):
+    if not predictions:
+        findings_text = "No significant abnormalities detected above threshold."
+        obs_text = "Lung fields appear clear. Cardiac silhouette is within normal limits."
+    else:
+        findings_text = "\n".join([f"- **{label}**: {score:.2f}% confidence" for label, score in predictions])
+        
+        # Contextual Observations based on top finding
+        top_finding = predictions[0][0]
+        if top_finding == 'Pneumonia':
+            obs_text = "There is suggestive opacity consistent with airspace consolidation."
+        elif top_finding == 'Cardiomegaly':
+            obs_text = "The cardiac silhouette appears enlarged (CTR > 0.5)."
+        elif top_finding == 'Effusion':
+            obs_text = "Blunting of the costophrenic angles is noted, suggestive of fluid."
+        elif top_finding == 'Infiltration':
+            obs_text = "Increased interstitial markings are visible."
+        elif top_finding == 'Mass' or top_finding == 'Nodule':
+            obs_text = "A focal density is observed requiring further characterization."
+        else:
+            obs_text = f"Radiographic features suggestive of {top_finding} are noted."
+
+    return f"""
 ### Observations
-{scenario['observations']}
+{obs_text}
+User Quality Check: The exposure and positioning should be verified by the radiologist.
 
 ### Possible Findings (AI-assisted)
-{', '.join([f"- {f}" for f in scenario['findings']])}
+{findings_text}
 
 ### Confidence Score
-{scenario['confidence']}
+Detailed probabilities provided above. 
+Note: Model operates on a multi-label classification basis.
 
 ### Limitations of Analysis
-{scenario['limitations']}
+The analysis is based on 2D pattern recognition from a single view. 
+Lateral views or CT correlation may be required for confirmation. 
+Overlapping soft tissue shadows can mimic pathology.
 
 ### Suggested Next Steps
-{scenario['next_steps']}
+- Clinical correlation with patient symptoms (e.g., fever, cough, chest pain).
+- Comparison with prior imaging if available.
+- Consider follow-up imaging or CT chest for ambiguous findings.
 
 ---
 **Disclaimer**
 This AI-generated analysis is for clinical assistance only and must be reviewed by a licensed doctor before any medical decision.
 """
-
-    return jsonify({
-        "status": "success",
-        "analysis": response_text,
-        "structured": scenario
-    })
 
 if __name__ == '__main__':
     print("Medical Imaging AI Service running on port 5003...")

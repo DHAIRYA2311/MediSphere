@@ -1,212 +1,200 @@
-# MODIFIED: Added Response for video streaming
-from flask import Flask, render_template, request, jsonify, Response
+import os
+import cv2
+import numpy as np
+import mysql.connector
+import json
+import datetime
+import threading
+import time
+import logging
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS
 from deepface import DeepFace
-import cv2, numpy as np, mysql.connector, json, datetime, os
-import mediapipe as mp  # NEW: Import MediaPipe
-from flask_cors import CORS # Added for React Integration
+
+# Try to use MediaPipe only if it works, otherwise fallback cleanly
+try:
+    import mediapipe as mp
+    mp_face_mesh = mp.solutions.face_mesh
+    mp_drawing = mp.solutions.drawing_utils
+    HAS_MEDIAPIPE = True
+except Exception:
+    HAS_MEDIAPIPE = False
+
+# Silencing Logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 app = Flask(__name__)
-CORS(app) # Enable CORS
+CORS(app)
 
-# --- MediaPipe Face Mesh Initialization ---
-# NEW: Initialize MediaPipe Face Mesh components
-mp_face_mesh = mp.solutions.face_mesh
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-# NEW: Define the drawing spec for the mesh (light green)
-drawing_spec = mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=1, circle_radius=1)
+class BiometricCore(threading.Thread):
+    def __init__(self):
+        super().__init__()
+        self.daemon = True
+        self.running = True
+        self.frame = None
+        self.processed_preview = None
+        self.lock = threading.Lock()
+        
+        # Camera Discovery
+        self.cap = None
+        # Try a few indices
+        for i in [0, 1, 700]: # 0 is typical, 700 is a hack for some OBS/Virtual cams
+            print(f"[SEARCH] Trying Camera Index {i}...")
+            cap = cv2.VideoCapture(i)
+            # Set small resolution for better stability & speed
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            
+            success, test_frame = cap.read()
+            if success and test_frame is not None:
+                self.cap = cap
+                print(f"[SUCCESS] High-Speed Camera Link established at index {i}")
+                break
+            cap.release()
 
+        if not self.cap:
+            print("[CRITICAL] NO CAMERA HARDWARE ACCESSIBLE.")
 
-# --- Database Connection ---
-def get_connection():
-    return mysql.connector.connect(
-        host="localhost",
-        user="root",        # 👈 change if you use another MySQL username
-        password="",        # 👈 your MySQL password here
-        database="medisphere_shms" # UPDATED to project database
-    )
+        # MediaPipe Init
+        self.face_mesh = None
+        if HAS_MEDIAPIPE:
+            try:
+                self.face_mesh = mp_face_mesh.FaceMesh(
+                    max_num_faces=1,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5
+                )
+            except:
+                self.face_mesh = None
 
-# --- Create Tables if not exists ---
-def init_db():
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS ai_faces (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100),
-            embedding JSON
-        )
-    """)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS ai_attendance_logs (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100),
-            time DATETIME
-        )
-    """)
-    conn.commit()
-    conn.close()
+    def run(self):
+        while self.running:
+            if not self.cap:
+                time.sleep(1)
+                continue
+                
+            success, raw_frame = self.cap.read()
+            if not success or raw_frame is None:
+                continue
+            
+            # Store raw for AI
+            with self.lock:
+                self.frame = raw_frame.copy()
+            
+            # Create Preview (Fast)
+            preview = cv2.flip(raw_frame, 1)
+            
+            # Optional AI Lines (Wrapped in try-catch to prevent freezes)
+            if self.face_mesh:
+                try:
+                    rgb = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
+                    results = self.face_mesh.process(rgb)
+                    if results.multi_face_landmarks:
+                        for landmarks in results.multi_face_landmarks:
+                            mp_drawing.draw_landmarks(
+                                image=preview,
+                                landmark_list=landmarks,
+                                connections=mp_face_mesh.FACEMESH_TESSELATION,
+                                landmark_drawing_spec=None,
+                                connection_drawing_spec=mp.solutions.drawing_styles.get_default_face_mesh_tesselation_style()
+                            )
+                except:
+                    pass
 
-init_db()
+            # Encode Preview
+            ret, buffer = cv2.imencode('.jpg', preview, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if ret:
+                with self.lock:
+                    self.processed_preview = buffer.tobytes()
+            
+            time.sleep(0.01)
 
-# --- Helper Functions ---
-def save_embedding(name, embedding):
-    conn = get_connection()
-    c = conn.cursor()
-    # Check if name exists, if so delete old (Re-register logic)
-    c.execute("DELETE FROM ai_faces WHERE name = %s", (name,))
-    c.execute("INSERT INTO ai_faces (name, embedding) VALUES (%s, %s)", 
-              (name, json.dumps(embedding)))
-    conn.commit()
-    conn.close()
+    def get_frame(self):
+        with self.lock:
+            return self.frame.copy() if self.frame is not None else None
 
-def get_all_embeddings():
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("SELECT name, embedding FROM ai_faces")
-    data = c.fetchall()
-    conn.close()
-    return [(n, json.loads(e)) for n, e in data]
+    def get_preview(self):
+        with self.lock:
+            return self.processed_preview
+
+core = BiometricCore()
+core.start()
+
+# --- Database ---
+def get_db():
+    return mysql.connector.connect(host="localhost", user="root", password="", database="medisphere_shms")
 
 # --- Routes ---
-@app.route('/')
-def index():
-    return "Face Service Running"
-
-# NEW: Video streaming route for face mesh
-def gen_frames():
-    """Video streaming generator function with Face Mesh."""
-    cap = cv2.VideoCapture(0)
-    # Use 'with' block for proper resource management
-    with mp_face_mesh.FaceMesh(
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5) as face_mesh:
-        
-        while True:
-            success, frame = cap.read()
-            if not success:
-                break
-            
-            frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-            frame.flags.writeable = False
-            results = face_mesh.process(frame)
-            frame.flags.writeable = True
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            
-            if results.multi_face_landmarks:
-                for face_landmarks in results.multi_face_landmarks:
-                    mp_drawing.draw_landmarks(
-                        image=frame,
-                        landmark_list=face_landmarks,
-                        connections=mp_face_mesh.FACEMESH_TESSELATION,
-                        landmark_drawing_spec=None,
-                        connection_drawing_spec=mp_drawing_styles
-                        .get_default_face_mesh_tesselation_style())
-
-            ret, buffer = cv2.imencode('.jpg', frame)
-            if not ret:
-                continue
-            frame_bytes = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-    
-    cap.release()
-
 @app.route('/video_feed')
 def video_feed():
-    """Video streaming route. Put this in the 'src' of an 'img' tag."""
-    return Response(gen_frames(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    def generate():
+        while True:
+            frame = core.get_preview()
+            if frame:
+                yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            else:
+                # Send a blank placeholder if camera is initializing
+                time.sleep(0.1)
+            time.sleep(0.04)
+    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-
-@app.route('/register', methods=['GET','POST'])
+@app.route('/register', methods=['POST'])
 def register():
-    if request.method == 'POST':
-        name = request.json.get('name') if request.is_json else request.form.get('name')
-        
-        cap = cv2.VideoCapture(0)
-        ret, frame = cap.read()
-        cap.release()
-        
-        if not ret:
-            return jsonify({"status": "error", "msg": "Camera not working"})
+    data = request.json
+    name = data.get('name')
+    frame = core.get_frame()
+    if frame is None: return jsonify({"status":"error", "msg":"Camera not ready"})
 
-        live_emb = None
-        try:
-            live_emb_data = DeepFace.represent(frame, 
-                                               model_name='Facenet', 
-                                               enforce_detection=True)
-            live_emb = live_emb_data[0]['embedding']
-
-        except Exception as e:
-            return jsonify({"status": "error", "msg": f"No face detected. Please try again. ({str(e)})"})
-
-        if live_emb:
-            # Re-register logic handled in save_embedding by deleting old entry first
-            save_embedding(name, live_emb)
-            return jsonify({"status": "success", "msg": f"{name} registered successfully!"})
-
-    return jsonify({"status": "info", "msg": "Use POST to register"})
+    try:
+        # Reduced enforcement for registration
+        res = DeepFace.represent(frame, model_name='Facenet', enforce_detection=False)
+        emb = res[0]['embedding']
+        db = get_db(); c = db.cursor()
+        c.execute("DELETE FROM ai_faces WHERE name = %s", (name,))
+        c.execute("INSERT INTO ai_faces (name, embedding) VALUES (%s, %s)", (name, json.dumps(emb)))
+        db.commit(); db.close()
+        return jsonify({"status":"success", "msg":f"{name} Registered!"})
+    except Exception as e:
+        return jsonify({"status":"error", "msg":"Registration failed. Look at camera."})
 
 @app.route('/mark_attendance', methods=['POST'])
 def mark_attendance():
-    cap = cv2.VideoCapture(0)
-    ret, frame = cap.read()
-    cap.release()
-    if not ret:
-        return jsonify({"status":"error","msg":"Camera error"})
-
-    live_emb = None
-    try:
-        live_emb_data = DeepFace.represent(frame, 
-                                           model_name='Facenet', 
-                                           enforce_detection=True)
-        live_emb = live_emb_data[0]['embedding']
-
-    except Exception as e:
-        return jsonify({"status":"error","msg":f"No face detected. Please try again. ({str(e)})"})
+    frame = core.get_frame()
+    if frame is None: return jsonify({"status":"error", "msg":"Camera not ready"})
 
     try:
-        all_faces = get_all_embeddings()
-        best_match, best_score = None, 0.6 
+        db = get_db(); c = db.cursor()
+        c.execute("SELECT name, embedding FROM ai_faces")
+        rows = c.fetchall(); db.close()
+        if not rows: return jsonify({"status":"error", "msg":"No faces in system."})
 
-        for name, db_emb in all_faces:
-            dist = DeepFace.verify(live_emb, 
-                                   db_emb, 
-                                   model_name='Facenet', 
-                                   enforce_detection=False, 
-                                   distance_metric='cosine')['distance']
-            
-            if dist < best_score:
-                best_match, best_score = name, dist
+        # Feature Extraction
+        res = DeepFace.represent(frame, model_name='Facenet', enforce_detection=False)
+        live_emb = res[0]['embedding']
+
+        best_match, best_dist = None, 0.45
+        for name, emb_json in rows:
+            dist = DeepFace.verify(live_emb, json.loads(emb_json), model_name='Facenet', enforce_detection=False, distance_metric='cosine')['distance']
+            if dist < best_dist:
+                best_match, best_dist = name, dist
 
         if best_match:
-            conn = get_connection()
-            c = conn.cursor()
-            
-            # Check for duplicate today
+            db = get_db(); c = db.cursor()
             today = datetime.datetime.now().strftime("%Y-%m-%d")
-            c.execute("SELECT time FROM ai_attendance_logs WHERE name = %s AND DATE(time) = %s", (best_match, today))
-            existing = c.fetchone()
+            c.execute("SELECT id FROM ai_attendance_logs WHERE name = %s AND DATE(time) = %s", (best_match, today))
+            if c.fetchone():
+                db.close()
+                return jsonify({"status":"warning", "msg":f"Duplicate: {best_match}"})
             
-            if existing:
-                existing_time = existing[0].strftime("%H:%M:%S")
-                conn.close()
-                return jsonify({"status":"warning", "msg":f"You have already marked attendance at {existing_time}"})
-            
-            current_time = datetime.datetime.now().strftime("%H:%M:%S")
-            c.execute("INSERT INTO ai_attendance_logs (name, time) VALUES (%s, %s)", 
-                      (best_match, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-            conn.commit()
-            conn.close()
-            return jsonify({"status":"success","msg":f"Welcome {best_match}, Attendance Marked at {current_time}"})
-        else:
-            return jsonify({"status":"unknown","msg":"No match found"})
-
+            c.execute("INSERT INTO ai_attendance_logs (name, time) VALUES (%s, NOW())", (best_match,))
+            db.commit(); db.close()
+            return jsonify({"status":"success", "msg":f"Welcome {best_match}!"})
+        
+        return jsonify({"status":"unknown", "msg":"Unknown person."})
     except Exception as e:
-        return jsonify({"status":"error","msg":str(e)})
+        return jsonify({"status":"error", "msg":"Recognition error. Center your face."})
 
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    print("\n[BOOT] BIOMETRIC CORE v4.2")
+    app.run(port=5001, debug=False, threaded=True)

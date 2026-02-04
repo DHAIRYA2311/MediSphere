@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { Edit2, Save, X, User, Phone, MapPin, Activity, HeartPulse, Shield, FileText } from 'lucide-react';
+import { Edit2, Save, X, User, Activity, HeartPulse, Shield, FileText } from 'lucide-react';
+import Skeleton from '../components/Skeleton';
 
 const PatientProfile = () => {
     const { id } = useParams();
     const [patient, setPatient] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({});
 
     useEffect(() => {
         const fetchPatient = async () => {
+            setLoading(true);
             const query = id ? `?id=${id}` : '';
             try {
                 const res = await api.get(`patients/get.php${query}`);
@@ -21,6 +24,8 @@ const PatientProfile = () => {
                 }
             } catch (error) {
                 console.error("Fetch failed", error);
+            } finally {
+                setLoading(false);
             }
         };
         fetchPatient();
@@ -47,7 +52,33 @@ const PatientProfile = () => {
         }
     };
 
-    if (!patient) return <div className="text-center py-5">Loading...</div>;
+    if (loading) return (
+        <div className="container py-5">
+            <div className="card-enterprise p-5 border-0 shadow-sm">
+                <div className="d-flex gap-4 align-items-center mb-5">
+                    <Skeleton className="skeleton-circle" style={{ width: 80, height: 80 }} />
+                    <div className="flex-grow-1">
+                        <Skeleton className="skeleton-title" style={{ width: '40%' }} />
+                        <Skeleton className="skeleton-text" style={{ width: '20%' }} />
+                    </div>
+                </div>
+                <div className="row g-5">
+                    <div className="col-md-6">
+                        <Skeleton className="skeleton-title" style={{ width: '30%' }} />
+                        <Skeleton className="skeleton-text" />
+                        <Skeleton className="skeleton-text" />
+                        <Skeleton className="skeleton-text" />
+                    </div>
+                    <div className="col-md-6">
+                        <Skeleton className="skeleton-title" style={{ width: '30%' }} />
+                        <Skeleton className="skeleton-rect" style={{ height: '150px' }} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    if (!patient) return <div className="text-center py-5 text-muted">Patient not found.</div>;
 
     return (
         <div className="container py-5 fade-in">

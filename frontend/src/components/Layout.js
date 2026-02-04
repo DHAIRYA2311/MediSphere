@@ -3,10 +3,28 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { motion } from 'framer-motion';
+import QuickAppointmentModal from './QuickAppointmentModal';
+import { useEffect } from 'react';
 
 const Layout = ({ children }) => {
     const { user } = useAuth();
     const [collapsed, setCollapsed] = useState(false);
+    const [isQuickBookOpen, setIsQuickBookOpen] = useState(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // F4 Key for Quick Appointment - Only for staff/admin/receptionist
+            if (e.key === 'F4') {
+                e.preventDefault();
+                if (user && ['admin', 'staff', 'receptionist'].includes(user.role)) {
+                    setIsQuickBookOpen(prev => !prev);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [user]);
 
     if (!user) {
         return <>{children}</>;
@@ -36,6 +54,12 @@ const Layout = ({ children }) => {
                     {children}
                 </div>
             </motion.div>
+
+            {/* Quick Actions Portal */}
+            <QuickAppointmentModal
+                isOpen={isQuickBookOpen}
+                onClose={() => setIsQuickBookOpen(false)}
+            />
         </div>
     );
 };

@@ -15,21 +15,30 @@ if (!$payload) {
 $user_id = $payload['id'];
 $role = $payload['role'];
 
-// Only patients can book for themselves, or receptionists for patients
-// For simplicity, let's assume the user IS the patient for now
-// We need to get the patient_id from the user_id
-$stmt = $pdo->prepare("SELECT patient_id FROM Patients WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$patient = $stmt->fetch();
+$data = json_decode(file_get_contents("php://input"));
+$patient_id = null;
 
-if (!$patient && $role == 'patient') {
-    echo json_encode(['status' => 'error', 'message' => 'Patient profile not found']);
-    exit();
+// Logic: If user is receptionist/admin, they can provide a patient_id.
+// Otherwise, we look up the patient_id associated with the logged-in user.
+if (in_array($role, ['receptionist', 'admin', 'staff']) && isset($data->patient_id)) {
+    $patient_id = $data->patient_id;
+} else {
+    $stmt = $pdo->prepare("SELECT patient_id FROM Patients WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $patient = $stmt->fetch();
+    
+    if ($patient) {
+        $patient_id = $patient['patient_id'];
+    } else if ($role == 'patient') {
+        echo json_encode(['status' => 'error', 'message' => 'Patient profile not found']);
+        exit();
+    }
 }
 
-$patient_id = $patient['patient_id'];
-
-$data = json_decode(file_get_contents("php://input"));
+if (!$patient_id) {
+    echo json_encode(['status' => 'error', 'message' => 'Valid Patient ID required']);
+    exit();
+}
 
 if (isset($data->doctor_id) && isset($data->date) && isset($data->time) && isset($data->method)) {
     $doctor_id = $data->doctor_id;

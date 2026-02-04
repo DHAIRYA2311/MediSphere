@@ -3,8 +3,9 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import DataTable from '../components/DataTable';
-import { Calendar, User, Video, CheckCircle, BedDouble, FileText } from 'lucide-react';
+import { Calendar, User, Video, CheckCircle, BedDouble, FileText, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TableSkeleton } from '../components/Skeleton';
 
 const MyAppointments = () => {
     const { user } = useAuth();
@@ -140,7 +141,7 @@ const MyAppointments = () => {
                     <span className={`badge ${row.booking_method === 'Online' ? 'bg-info bg-opacity-10 text-info' : 'bg-secondary bg-opacity-10 text-secondary'} border border-opacity-10 w-fit`}>
                         {row.booking_method}
                     </span>
-                    {/* VIDEO CALL LINK - NOW SHOWS FOR PENDING As WELL (If code exists) */}
+                    {/* VIDEO CALL LINK */}
                     {row.booking_method === 'Online' && (row.status === 'Confirmed' || row.status === 'Pending') && row.meeting_code && (
                         <Link
                             to={`/consultation/${row.meeting_code}`}
@@ -149,6 +150,16 @@ const MyAppointments = () => {
                             target="_blank"
                         >
                             <Video size={12} className="me-1" /> Join Video
+                        </Link>
+                    )}
+                    {/* WALK-IN CONSULTATION LINK */}
+                    {row.booking_method === 'Walk-in' && (row.status === 'Confirmed' || row.status === 'Pending') && isDoctor && (
+                        <Link
+                            to={`/walk-in-consultation/${row.appointment_id}`}
+                            className="btn btn-sm btn-outline-success py-0 px-2 rounded-pill mt-1 text-decoration-none"
+                            style={{ fontSize: '0.75rem' }}
+                        >
+                            <Activity size={12} className="me-1" /> Start Consultation
                         </Link>
                     )}
                 </div>
@@ -173,17 +184,7 @@ const MyAppointments = () => {
 
     // Doctor Actions
     if (isDoctor) {
-        actions.push({
-            label: 'Consult / Action',
-            icon: CheckCircle,
-            onClick: (row) => {
-                // Allow action for Pending as well to let doctor Confirm if needed, 
-                // but for now our consult modal handles completion.
-                // We'll allow opening it for Confirmed/Pending
-                if (row.status === 'Confirmed' || row.status === 'Pending') handleConsultClick(row);
-            },
-            className: (row) => (row.status === 'Confirmed' || row.status === 'Pending') ? 'text-primary fw-bold' : 'd-none'
-        });
+        // Keep empty for now or add other doctor actions
     } else {
         // Patient Actions
         actions.push({
@@ -204,7 +205,7 @@ const MyAppointments = () => {
             </div>
 
             {loading ? (
-                <div className="text-center py-5 text-muted">Loading appointments...</div>
+                <TableSkeleton rows={8} cols={4} />
             ) : (
                 <DataTable
                     title={isDoctor ? "Upcoming Appointments" : "History"}

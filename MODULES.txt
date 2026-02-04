@@ -17,4 +17,3 @@
 | 15       | Chatbot (AI)                       |✔
 | 16       | Facial Recognition Attendance (AI) |✔
 | 17       | Diagnosis Prediction (AI)          |
-

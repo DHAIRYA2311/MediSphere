@@ -25,12 +25,16 @@ import ReportsList from './pages/ReportsList';
 import BedManagement from './pages/BedManagement';
 import FaceAttendance from './pages/FaceAttendance';
 import ConsultationRoom from './pages/ConsultationRoom';
+import WalkInConsultation from './pages/WalkInConsultation';
 import PaymentPage from './pages/PaymentPage';
 import VisitorManagement from './pages/VisitorManagement';
 import InsuranceClaims from './pages/InsuranceClaims';
 import DocumentManager from './pages/DocumentManager';
 import DonationManagement from './pages/DonationManagement';
+import DiseasePrediction from './pages/DiseasePrediction';
+import XRayAnalysis from './pages/XRayAnalysis';
 import ChatBot from './components/ChatBot';
+import MagicLoginVerify from './pages/MagicLoginVerify';
 
 function App() {
   return (
@@ -41,6 +45,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/magic-login" element={<MagicLoginVerify />} />
 
           {/* Protected Routes wrapped in Layout */}
           <Route
@@ -169,10 +174,34 @@ function App() {
                     }
                   />
                   <Route
+                    path="/ai-prediction"
+                    element={
+                      <ProtectedRoute>
+                        <DiseasePrediction />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/xray-analysis"
+                    element={
+                      <ProtectedRoute>
+                        <XRayAnalysis />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/consultation/:meetingCode"
                     element={
                       <ProtectedRoute>
                         <ConsultationRoom />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/walk-in-consultation/:id"
+                    element={
+                      <ProtectedRoute>
+                        <WalkInConsultation />
                       </ProtectedRoute>
                     }
                   />
