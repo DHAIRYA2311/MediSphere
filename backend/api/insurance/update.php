@@ -16,25 +16,47 @@ $data = json_decode(file_get_contents("php://input"));
 
 if (isset($data->claim_id) && isset($data->status)) {
     $claim_id = $data->claim_id;
-    $status = $data->status; // Approved, Rejected (Though enum is currently Approved, Pending - Update schema if needed)
+    $status = $data->status; // Approved or Pending (as per current enum)
     
-    // Check if status in enum or we modify schema. 
-    // Schema says: ENUM('Approved', 'Pending'). Let's add 'Rejected' to schema first via this thought process or assume just Approved.
-    // For robust app, users might want to Reject.
-    // However, without altering table now, we stick to 'Approved' or toggle back 'Pending'?? 
-    // Or we use `ALTER TABLE Insurance_Claims MODIFY COLUMN claim_status ENUM('Approved', 'Pending', 'Rejected');`
-    // I will stick to what is there or update blindly if I can't run DDL easily.
-    // Let's assume we want to update it.
-
     try {
-       // Attempt update
-        $stmt = $pdo->prepare("UPDATE Insurance_Claims SET claim_status = ? WHERE claim_id = ?");
+        $pdo->beginTransaction();
+
+        // 1. Fetch Claim and associated Bill
+        $stmt = $pdo->prepare("SELECT ic.*, b.total_amount, b.paid_amount as current_paid FROM Insurance_Claims ic JOIN Billing b ON ic.billing_id = b.bill_id WHERE ic.claim_id = ?");
+        $stmt->execute([$claim_id]);
+        $claim = $stmt->fetch();
+
+        if (!$claim) {
+            throw new Exception("Claim or linked Bill not found.");
+        }
+
+        // 2. Prevent re-processing if already Approved
+        if ($claim['claim_status'] === 'Approved' && $status === 'Approved') {
+            throw new Exception("This claim is already approved.");
+        }
+
+        // 3. Update Claim Status
+        $stmt = $pdo->prepare("UPDATE Insurance_Claims SET claim_status = ?, processed_date = CURDATE() WHERE claim_id = ?");
         $stmt->execute([$status, $claim_id]);
 
-        echo json_encode(['status' => 'success', 'message' => 'Claim updated successfully']);
-    } catch (PDOException $e) {
+        // 4. Update Billing if Approved
+        if ($status === 'Approved') {
+            $approved_amount = $claim['claim_amount'];
+            $new_paid_amount = $claim['current_paid'] + $approved_amount;
+            
+            // Determine new payment status
+            $payment_status = ($new_paid_amount >= $claim['total_amount']) ? 'Paid' : 'Partial';
+            
+            $stmt = $pdo->prepare("UPDATE Billing SET paid_amount = ?, payment_status = ?, payment_date = CURDATE() WHERE bill_id = ?");
+            $stmt->execute([$new_paid_amount, $payment_status, $claim['billing_id']]);
+        }
+
+        $pdo->commit();
+        echo json_encode(['status' => 'success', 'message' => 'Claim processed and Billing updated.']);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
         http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => 'Update failed: ' . $e->getMessage()]);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Missing ID or Status']);

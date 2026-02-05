@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const InsuranceClaims = () => {
     const [claims, setClaims] = useState([]);
     const [patients, setPatients] = useState([]);
+    const [bills, setBills] = useState([]); // Fetch bills to link
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -14,6 +15,7 @@ const InsuranceClaims = () => {
     // Form Data
     const [formData, setFormData] = useState({
         patient_id: '',
+        billing_id: '',
         insurance_number: '',
         claim_amount: ''
     });
@@ -25,13 +27,15 @@ const InsuranceClaims = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [claimsRes, patientsRes] = await Promise.all([
+            const [claimsRes, patientsRes, billsRes] = await Promise.all([
                 api.get('insurance/list.php'),
-                api.get('patients/list.php') // Re-using patients list API
+                api.get('patients/list.php'),
+                api.get('billing/list.php')
             ]);
 
             if (claimsRes.status === 'success') setClaims(claimsRes.data);
             if (patientsRes.status === 'success') setPatients(patientsRes.data);
+            if (billsRes.status === 'success') setBills(billsRes.data);
 
         } catch (e) {
             console.error(e);
@@ -39,6 +43,12 @@ const InsuranceClaims = () => {
             setLoading(false);
         }
     };
+
+    // Filter bills for the selected patient that are PENDING/PARTIAL
+    const availableBills = bills.filter(b =>
+        b.patient_id == formData.patient_id &&
+        b.payment_status != 'Paid'
+    );
 
     const handleStatusUpdate = async (claimId, newStatus) => {
         if (!window.confirm(`Are you sure you want to ${newStatus} this claim?`)) return;
@@ -61,7 +71,7 @@ const InsuranceClaims = () => {
             const res = await api.post('insurance/create.php', formData);
             if (res.status === 'success') {
                 setIsModalOpen(false);
-                setFormData({ patient_id: '', insurance_number: '', claim_amount: '' });
+                setFormData({ patient_id: '', billing_id: '', insurance_number: '', claim_amount: '' });
                 fetchData();
             } else {
                 alert(res.message);
@@ -189,6 +199,30 @@ const InsuranceClaims = () => {
                                                 {patients.map(p => (
                                                     <option key={p.patient_id} value={p.patient_id}>
                                                         {p.first_name} {p.last_name} ({p.insurance_number || 'No Policy'})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label small fw-bold text-muted">Bill / Invoice</label>
+                                            <select
+                                                className="form-select bg-light border-0"
+                                                value={formData.billing_id}
+                                                onChange={(e) => {
+                                                    const selectedBill = bills.find(b => b.bill_id == e.target.value);
+                                                    setFormData({
+                                                        ...formData,
+                                                        billing_id: e.target.value,
+                                                        claim_amount: selectedBill ? (selectedBill.total_amount - (selectedBill.paid_amount || 0)) : ''
+                                                    });
+                                                }}
+                                                required
+                                                disabled={!formData.patient_id}
+                                            >
+                                                <option value="">-- {formData.patient_id ? 'Select Unpaid Bill' : 'Select Patient First'} --</option>
+                                                {availableBills.map(b => (
+                                                    <option key={b.bill_id} value={b.bill_id}>
+                                                        Bill #{b.bill_id} - Total: ${b.total_amount} (Due: ${b.total_amount - (b.paid_amount || 0)})
                                                     </option>
                                                 ))}
                                             </select>

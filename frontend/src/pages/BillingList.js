@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import DataTable from '../components/DataTable';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Download, Plus, FileText, DollarSign, Calendar } from 'lucide-react';
+import { Download, Plus, FileText, DollarSign, Calendar, CheckCircle, CreditCard, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '../components/Skeleton';
 
@@ -51,6 +51,20 @@ const BillingList = () => {
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleStatusUpdate = async (billId, newStatus) => {
+        if (!window.confirm(`Mark this bill as ${newStatus}?`)) return;
+        try {
+            const res = await api.post('billing/update_status.php', { bill_id: billId, status: newStatus });
+            if (res.status === 'success') {
+                fetchBills();
+            } else {
+                alert(res.message);
+            }
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -152,10 +166,28 @@ const BillingList = () => {
                     {row.payment_status}
                 </span>
             )
+        },
+        {
+            key: 'claim_status',
+            label: 'Insurance',
+            render: (row) => (
+                row.claim_id ? (
+                    <span className={`small d-flex align-items-center gap-1 ${row.claim_status === 'Approved' ? 'text-success' : 'text-warning'}`}>
+                        <ShieldCheck size={14} /> {row.claim_status}
+                    </span>
+                ) : <span className="text-muted small">None</span>
+            )
         }
     ];
 
     const actions = [
+        {
+            label: 'Mark as Paid',
+            icon: CheckCircle,
+            className: 'text-success',
+            onClick: (row) => handleStatusUpdate(row.bill_id, 'Paid'),
+            show: (row) => row.payment_status !== 'Paid' && isStaff
+        },
         { label: 'Download PDF', icon: Download, onClick: generatePDF }
     ];
 

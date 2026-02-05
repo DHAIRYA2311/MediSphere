@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, BASE_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { TableSkeleton } from '../components/Skeleton';
+import { CloudUpload, Download, FileText, Activity, User, FileX } from 'lucide-react';
 
 const ReportsList = () => {
     const { user } = useAuth();
@@ -71,22 +72,21 @@ const ReportsList = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!formData.report_file) {
+            alert("Please select a file to upload.");
+            return;
+        }
+
         const data = new FormData();
         data.append('patient_id', formData.patient_id);
         data.append('doctor_id', formData.doctor_id);
         data.append('report_type', formData.report_type);
         data.append('report_file', formData.report_file);
 
+        setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/Medisphere-Project/backend/api/reports/create.php`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: data
-            });
-            const res = await response.json();
+            const res = await api.upload('reports/create.php', data);
 
             if (res.status === 'success') {
                 alert('Report uploaded successfully!');
@@ -99,6 +99,8 @@ const ReportsList = () => {
         } catch (error) {
             console.error(error);
             alert('An error occurred during upload.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -112,8 +114,8 @@ const ReportsList = () => {
                     <p className="text-muted">Manage and view diagnostic reports.</p>
                 </div>
                 {canUpload && (
-                    <button className="btn btn-primary rounded-pill px-4" onClick={() => setShowModal(true)}>
-                        <i className="bi bi-cloud-upload me-2"></i> Upload Report
+                    <button className="btn btn-primary rounded-pill px-4 d-flex align-items-center gap-2" onClick={() => setShowModal(true)}>
+                        <CloudUpload size={18} /> Upload Report
                     </button>
                 )}
             </div>
@@ -150,8 +152,8 @@ const ReportsList = () => {
                                             <td className="ps-4 fw-bold">#{report.report_id}</td>
                                             <td>
                                                 <div className="d-flex align-items-center">
-                                                    <div className="bg-primary bg-opacity-10 rounded-circle p-2 me-3 text-primary">
-                                                        <i className="bi bi-person"></i>
+                                                    <div className="bg-primary bg-opacity-10 rounded-circle p-2 me-3 text-primary d-flex align-items-center justify-content-center">
+                                                        <User size={18} />
                                                     </div>
                                                     <div>
                                                         <h6 className="mb-0">{report.p_first} {report.p_last}</h6>
@@ -168,12 +170,12 @@ const ReportsList = () => {
                                             <td>{new Date(report.created_at).toLocaleDateString()}</td>
                                             <td className="text-end pe-4">
                                                 <a
-                                                    href={`http://localhost:8080/Medisphere-Project/backend/${report.report_file}`}
+                                                    href={`${BASE_URL}/${report.report_file}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="btn btn-sm btn-outline-primary rounded-pill"
+                                                    className="btn btn-sm btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2 px-3"
                                                 >
-                                                    <i className="bi bi-download me-1"></i> View
+                                                    <Download size={14} /> View
                                                 </a>
                                             </td>
                                         </tr>
@@ -181,7 +183,7 @@ const ReportsList = () => {
                                 ) : (
                                     <tr>
                                         <td colSpan="6" className="text-center py-5 text-muted">
-                                            <i className="bi bi-file-earmark-x display-4 d-block mb-3"></i>
+                                            <FileX size={48} className="d-block mx-auto mb-3 opacity-25" />
                                             No reports found.
                                         </td>
                                     </tr>

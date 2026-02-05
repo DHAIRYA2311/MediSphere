@@ -9,9 +9,12 @@ import {
     Edit2,
     Trash2,
     ArrowRightLeft,
-    Move
+    Move,
+    PlusCircle,
+    XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { jsPDF } from 'jspdf';
 
 const BedManagement = () => {
     const { user } = useAuth();
@@ -31,6 +34,7 @@ const BedManagement = () => {
     const [showAllocate, setShowAllocate] = useState(false);
     const [showEditBed, setShowEditBed] = useState(false);
     const [showMoveBed, setShowMoveBed] = useState(false);
+    const [showDischarge, setShowDischarge] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,6 +46,12 @@ const BedManagement = () => {
     const [targetBedId, setTargetBedId] = useState('');
     const [editBedNumber, setEditBedNumber] = useState('');
 
+    // Billing Items for Discharge
+    const [billItems, setBillItems] = useState([
+        { description: 'Ward Charges', amount: '200' },
+        { description: 'Nursing Service', amount: '50' }
+    ]);
+
     useEffect(() => {
         if (role === 'patient') {
             fetchMyBed();
@@ -50,40 +60,31 @@ const BedManagement = () => {
         }
     }, [role]);
 
+    // ... (keep fetch functions) ...
     const fetchWards = async () => {
         try {
             const res = await api.get('wards/list.php');
             if (res.status === 'success') setWards(res.data);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     };
-
     const fetchBeds = async (wardId) => {
         try {
             const res = await api.get(`beds/list.php?ward_id=${wardId}`);
             if (res.status === 'success') setBeds(res.data);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     };
-
     const fetchFreeBeds = async () => {
         try {
             const res = await api.get('beds/list_free.php');
             if (res.status === 'success') setFreeBeds(res.data);
         } catch (e) { console.error(e); }
     };
-
     const fetchMyBed = async () => {
         try {
             const res = await api.get('beds/my_bed.php');
             if (res.status === 'success') setMyBed(res.data);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     };
-
     const fetchPatients = async () => {
         try {
             const res = await api.get('patients/list.php');
@@ -96,7 +97,6 @@ const BedManagement = () => {
         fetchBeds(ward.ward_id);
     };
 
-    // ... (Create Ward and Add Bed Logic existing code) ...
     const handleCreateWard = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -156,6 +156,16 @@ const BedManagement = () => {
         setShowMoveBed(true);
     };
 
+    const openDischargeModal = (e, bed) => {
+        e.stopPropagation();
+        setSelectedBed(bed);
+        setBillItems([
+            { description: 'Ward Charges', amount: '200' },
+            { description: 'Nursing Service', amount: '50' }
+        ]);
+        setShowDischarge(true);
+    };
+
     const handleAllocate = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -171,16 +181,71 @@ const BedManagement = () => {
         finally { setIsSubmitting(false); }
     };
 
-    const handleRelease = async (e, bed) => {
-        e.stopPropagation();
-        if (!window.confirm("Discharge patient and release bed?")) return;
+    const handleDischargeWithBill = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
+        const total = billItems.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
+
         try {
-            const res = await api.post('beds/release.php', { bed_id: bed.bed_id });
+            // 1. Generate & Upload PDF
+            const doc = new jsPDF();
+            doc.setFontSize(22); doc.text("Medisphere Hospital", 105, 20, null, null, "center");
+            doc.setFontSize(14); doc.text("OFFICIAL DISCHARGE BILL", 105, 30, null, null, "center");
+            doc.line(20, 35, 190, 35);
+
+            doc.setFontSize(11);
+            doc.text(`Patient: ${selectedBed.first_name} ${selectedBed.last_name}`, 20, 50);
+            doc.text(`Ward: ${selectedWard.ward_name} | Bed: ${selectedBed.bed_number}`, 20, 57);
+            doc.text(`Discharge Date: ${new Date().toLocaleDateString()}`, 140, 50);
+
+            doc.setFontSize(12); doc.text("Description", 25, 75); doc.text("Amount", 160, 75);
+            doc.line(20, 78, 190, 78);
+
+            let y = 85;
+            billItems.forEach(item => {
+                doc.text(item.description, 25, y);
+                doc.text(`$${parseFloat(item.amount).toFixed(2)}`, 160, y);
+                y += 10;
+            });
+
+            doc.line(20, y, 190, y); y += 10;
+            doc.setFontSize(14); doc.text("Grand Total:", 120, y); doc.text(`$${total.toFixed(2)}`, 160, y);
+
+            const pdfBlob = doc.output('blob');
+            const formData = new FormData();
+            formData.append('patient_id', selectedBed.patient_id);
+            formData.append('type', 'Invoices');
+            formData.append('file', pdfBlob, `Discharge_Bill_${selectedBed.bed_id}.pdf`);
+
+            const token = localStorage.getItem('token');
+            await fetch('http://localhost:8080/Medisphere-Project/backend/api/documents/upload.php', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            // 2. Release Bed and Create Bill Record
+            const res = await api.post('beds/release.php', {
+                bed_id: selectedBed.bed_id,
+                patient_id: selectedBed.patient_id,
+                total_amount: total
+            });
+
             if (res.status === 'success') {
+                setShowDischarge(false);
                 fetchBeds(selectedWard.ward_id);
                 fetchWards();
-            } else { alert(res.message); }
-        } catch (e) { alert('Release failed'); }
+                alert("Discharge Successful. Bill saved to records.");
+            } else {
+                alert(res.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Discharge process failed.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleDelete = async (e, bed) => {
@@ -371,8 +436,8 @@ const BedManagement = () => {
                                     <div className="col-6 col-md-4 col-lg-3 col-xl-2" key={bed.bed_id}>
                                         <div
                                             className={`p-3 rounded-4 border text-center position-relative transition-all hover-lift ${bed.status === 'Occupied'
-                                                    ? 'bg-danger bg-opacity-10 border-danger border-opacity-25'
-                                                    : 'bg-white border-light shadow-sm'
+                                                ? 'bg-danger bg-opacity-10 border-danger border-opacity-25'
+                                                : 'bg-white border-light shadow-sm'
                                                 }`}
                                             // Make Only Free beds clickable for allocation on card body, or handle in action buttons
                                             onClick={() => {
@@ -402,7 +467,7 @@ const BedManagement = () => {
                                                             <button className="btn btn-sm btn-light text-primary p-1" title="Move Patient" onClick={(e) => openMoveModal(e, bed)}>
                                                                 <ArrowRightLeft size={14} />
                                                             </button>
-                                                            <button className="btn btn-sm btn-light text-success p-1" title="Discharge" onClick={(e) => handleRelease(e, bed)}>
+                                                            <button className="btn btn-sm btn-light text-success p-1" title="Discharge" onClick={(e) => openDischargeModal(e, bed)}>
                                                                 <CheckCircle size={14} />
                                                             </button>
                                                         </>
@@ -562,6 +627,114 @@ const BedManagement = () => {
                                         </div>
                                         <div className="d-grid"><button type="submit" className="btn btn-primary" disabled={isSubmitting}>Confirm Move</button></div>
                                     </form>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+            {/* Discharge & Billing Modal */}
+            <AnimatePresence>
+                {showDischarge && (
+                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="modal-dialog modal-dialog-centered modal-lg">
+                            <div className="modal-content border-0 shadow-lg rounded-4">
+                                <div className="modal-header border-bottom-0 p-4 pb-0">
+                                    <h5 className="modal-title fw-bold">Discharge & Final Billing</h5>
+                                    <button type="button" className="btn-close" onClick={() => setShowDischarge(false)}></button>
+                                </div>
+                                <div className="modal-body p-4 pt-4">
+                                    <div className="alert alert-primary bg-opacity-10 border-0 rounded-4 mb-4 d-flex align-items-center gap-3">
+                                        <div className="bg-primary bg-opacity-20 p-3 rounded-circle text-primary">
+                                            <BedDouble size={24} />
+                                        </div>
+                                        <div>
+                                            <h6 className="fw-bold mb-0">{selectedBed?.first_name} {selectedBed?.last_name}</h6>
+                                            <small className="text-muted">Ward: {selectedWard?.ward_name} | Bed: {selectedBed?.bed_number}</small>
+                                        </div>
+                                    </div>
+
+                                    <h6 className="fw-bold text-dark mb-3">Invoice Items</h6>
+                                    <div className="table-responsive mb-3">
+                                        <table className="table table-sm align-middle">
+                                            <thead className="text-muted small uppercase">
+                                                <tr>
+                                                    <th>Description</th>
+                                                    <th style={{ width: '150px' }}>Amount ($)</th>
+                                                    <th style={{ width: '50px' }}></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {billItems.map((item, idx) => (
+                                                    <tr key={idx}>
+                                                        <td>
+                                                            <input
+                                                                type="text"
+                                                                className="form-control form-control-sm border-0 bg-light"
+                                                                value={item.description}
+                                                                onChange={(e) => {
+                                                                    const newItems = [...billItems];
+                                                                    newItems[idx].description = e.target.value;
+                                                                    setBillItems(newItems);
+                                                                }}
+                                                                placeholder="e.g. Ward Charges"
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <input
+                                                                type="number"
+                                                                className="form-control form-control-sm border-0 bg-light"
+                                                                value={item.amount}
+                                                                onChange={(e) => {
+                                                                    const newItems = [...billItems];
+                                                                    newItems[idx].amount = e.target.value;
+                                                                    setBillItems(newItems);
+                                                                }}
+                                                                placeholder="0.00"
+                                                            />
+                                                        </td>
+                                                        <td className="text-end">
+                                                            <button
+                                                                className="btn btn-link text-danger p-0"
+                                                                onClick={() => setBillItems(billItems.filter((_, i) => i !== idx))}
+                                                            >
+                                                                <XCircle size={18} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 mb-4 rounded-pill px-3"
+                                        onClick={() => setBillItems([...billItems, { description: '', amount: '' }])}
+                                    >
+                                        <PlusCircle size={14} /> Add Item
+                                    </button>
+
+                                    <div className="bg-light rounded-4 p-4">
+                                        <div className="d-flex justify-content-between align-items-center mb-0">
+                                            <span className="fw-bold text-muted uppercase small">Total Due</span>
+                                            <span className="fs-3 fw-bold text-primary">
+                                                ${billItems.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="row mt-4">
+                                        <div className="col-12">
+                                            <button
+                                                className="btn btn-success w-100 py-3 rounded-pill fw-bold shadow-sm"
+                                                onClick={handleDischargeWithBill}
+                                                disabled={isSubmitting}
+                                            >
+                                                {isSubmitting ? 'Processing Discharge...' : 'Confirm Discharge & Generate Bill'}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>

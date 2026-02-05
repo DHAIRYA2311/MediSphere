@@ -35,6 +35,10 @@ import DiseasePrediction from './pages/DiseasePrediction';
 import XRayAnalysis from './pages/XRayAnalysis';
 import ChatBot from './components/ChatBot';
 import MagicLoginVerify from './pages/MagicLoginVerify';
+import AttendanceLogs from './pages/AttendanceLogs';
+import Profile from './pages/Profile';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -45,6 +49,8 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/magic-login" element={<MagicLoginVerify />} />
 
           {/* Protected Routes wrapped in Layout */}
@@ -56,7 +62,7 @@ function App() {
                   <Route
                     path="/dashboard"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['all']}>
                         <Dashboard />
                       </ProtectedRoute>
                     }
@@ -64,7 +70,7 @@ function App() {
                   <Route
                     path="/book-appointment"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['patient', 'receptionist', 'admin']}>
                         <BookAppointment />
                       </ProtectedRoute>
                     }
@@ -72,7 +78,7 @@ function App() {
                   <Route
                     path="/appointments"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['patient', 'doctor', 'receptionist', 'admin']}>
                         <MyAppointments />
                       </ProtectedRoute>
                     }
@@ -80,7 +86,7 @@ function App() {
                   <Route
                     path="/patients"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
                         <PatientsList />
                       </ProtectedRoute>
                     }
@@ -88,7 +94,7 @@ function App() {
                   <Route
                     path="/patients/:id"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist']}>
                         <PatientProfile />
                       </ProtectedRoute>
                     }
@@ -96,7 +102,7 @@ function App() {
                   <Route
                     path="/users"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin']}>
                         <UsersList />
                       </ProtectedRoute>
                     }
@@ -104,7 +110,7 @@ function App() {
                   <Route
                     path="/staff"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin']}>
                         <StaffList />
                       </ProtectedRoute>
                     }
@@ -112,7 +118,7 @@ function App() {
                   <Route
                     path="/billing"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'receptionist', 'patient']}>
                         <BillingList />
                       </ProtectedRoute>
                     }
@@ -120,7 +126,7 @@ function App() {
                   <Route
                     path="/reports"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'doctor', 'patient']}>
                         <ReportsList />
                       </ProtectedRoute>
                     }
@@ -128,7 +134,7 @@ function App() {
                   <Route
                     path="/ward-management"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist', 'staff']}>
                         <BedManagement />
                       </ProtectedRoute>
                     }
@@ -136,15 +142,23 @@ function App() {
                   <Route
                     path="/face-attendance"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'staff']}>
                         <FaceAttendance />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/attendance-logs"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                        <AttendanceLogs />
                       </ProtectedRoute>
                     }
                   />
                   <Route
                     path="/visitors"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'receptionist', 'staff']}>
                         <VisitorManagement />
                       </ProtectedRoute>
                     }
@@ -152,7 +166,7 @@ function App() {
                   <Route
                     path="/insurance"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'receptionist', 'patient']}>
                         <InsuranceClaims />
                       </ProtectedRoute>
                     }
@@ -160,7 +174,7 @@ function App() {
                   <Route
                     path="/documents"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'doctor', 'receptionist', 'patient']}>
                         <DocumentManager />
                       </ProtectedRoute>
                     }
@@ -168,7 +182,7 @@ function App() {
                   <Route
                     path="/donations"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'patient']}>
                         <DonationManagement />
                       </ProtectedRoute>
                     }
@@ -176,7 +190,7 @@ function App() {
                   <Route
                     path="/ai-prediction"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'doctor']}>
                         <DiseasePrediction />
                       </ProtectedRoute>
                     }
@@ -184,7 +198,7 @@ function App() {
                   <Route
                     path="/xray-analysis"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'doctor']}>
                         <XRayAnalysis />
                       </ProtectedRoute>
                     }
@@ -214,9 +228,17 @@ function App() {
                     }
                   />
                   <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute allowedRoles={['all']}>
+                        <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/doctors"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'receptionist', 'doctor']}>
                         <DoctorsList />
                       </ProtectedRoute>
                     }
@@ -224,7 +246,7 @@ function App() {
                   <Route
                     path="/doctors/:id"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={['admin', 'receptionist', 'doctor']}>
                         <DoctorProfile />
                       </ProtectedRoute>
                     }

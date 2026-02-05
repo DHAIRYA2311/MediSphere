@@ -20,7 +20,13 @@ import {
     ChevronLeft,
     ChevronRight,
     Gift,
-    Scan
+    Scan,
+    ClipboardList,
+    Brain,
+    ShieldAlert,
+    Wallet,
+    Boxes,
+    BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -38,57 +44,82 @@ const Sidebar = ({ collapsed, toggleCollapsed }) => {
 
     const role = user.role.toLowerCase();
 
-    // Define navigation items based on role
-    const getNavItems = () => {
-        const items = [
-            { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['all'] },
+    // Define sidebar configuration with sections and visibility rules
+    const sidebarConfig = [
+        {
+            title: "Main",
+            roles: ["all"],
+            items: [
+                { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['all'] },
+            ]
+        },
+        {
+            title: "Patient Care",
+            roles: ["admin", "doctor", "receptionist", "patient"],
+            items: [
+                { path: '/appointments', label: role === 'patient' ? 'My Appointments' : 'Appointments', icon: Calendar, roles: ['admin', 'receptionist', 'doctor', 'patient'] },
+                { path: '/patients', label: 'Patients', icon: Activity, roles: ['admin', 'doctor', 'receptionist'] },
+            ]
+        },
+        {
+            title: "Medical Records",
+            roles: ["admin", "doctor", "receptionist", "patient"],
+            items: [
+                { path: '/documents', label: 'Documents', icon: FileText, roles: ['admin', 'doctor', 'receptionist', 'patient'] },
+                { path: '/reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'doctor', 'patient'] },
+            ]
+        },
+        {
+            title: "🤖 AI Tools",
+            roles: ["admin", "doctor", "staff"],
+            items: [
+                { path: '/ai-prediction', label: 'AI Diagnosis', icon: Brain, roles: ['admin', 'doctor'] },
+                { path: '/xray-analysis', label: 'X-Ray Analysis', icon: Scan, roles: ['admin', 'doctor'] },
+                { path: '/face-attendance', label: 'Face Attendance', icon: ScanFace, roles: ['admin', 'staff'] },
+            ]
+        },
+        {
+            title: "Financial",
+            roles: ["admin", "receptionist", "patient"],
+            items: [
+                { path: '/billing', label: 'Billing', icon: CreditCard, roles: ['admin', 'receptionist', 'patient'] },
+                { path: '/insurance', label: 'Insurance & Claims', icon: ShieldCheck, roles: ['admin', 'receptionist', 'patient'] },
+                { path: '/donations', label: 'Donations', icon: Gift, roles: ['admin', 'patient'] },
+            ]
+        },
+        {
+            title: "Operations",
+            roles: ["admin", "receptionist", "staff", "doctor"],
+            items: [
+                { path: '/ward-management', label: 'Ward Management', icon: BedDouble, roles: ['admin', 'receptionist', 'staff', 'doctor'] },
+                { path: '/visitors', label: 'Visitor Logs', icon: UserCheck, roles: ['admin', 'receptionist', 'staff'] },
+            ]
+        },
+        {
+            title: "Security & Logs",
+            roles: ["admin", "staff"],
+            items: [
+                { path: '/attendance-logs', label: 'Attendance Logs', icon: ClipboardList, roles: ['admin', 'staff'] },
+            ]
+        },
+        {
+            title: "Core Management",
+            roles: ["admin"],
+            items: [
+                { path: '/users', label: 'Users', icon: Users, roles: ['admin'] },
+                { path: '/doctors', label: 'Doctors', icon: Stethoscope, roles: ['admin'] },
+                { path: '/staff', label: 'Staff', icon: UserCircle, roles: ['admin'] },
+            ]
+        }
+    ];
 
-            // Admin
-            { path: '/users', label: 'Users', icon: Users, roles: ['admin'] },
-            { path: '/doctors', label: 'Doctors', icon: Stethoscope, roles: ['admin'] },
-            { path: '/staff', label: 'Staff', icon: UserCircle, roles: ['admin'] },
-            { path: '/patients', label: 'Patients', icon: Activity, roles: ['admin', 'doctor', 'receptionist'] },
-            { path: '/appointments', label: 'Appointments', icon: Calendar, roles: ['admin', 'receptionist', 'doctor'] },
-            { path: '/billing', label: 'Billing', icon: CreditCard, roles: ['admin', 'receptionist', 'patient'] },
-            { path: '/reports', label: 'Reports', icon: FileText, roles: ['admin', 'receptionist', 'doctor', 'patient'] },
-            { path: '/ward-management', label: 'Ward Management', icon: BedDouble, roles: ['admin', 'receptionist', 'patient'] },
-            { path: '/face-attendance', label: 'Face Attendance', icon: ScanFace, roles: ['admin', 'receptionist'] },
-            { path: '/visitors', label: 'Visitor Logs', icon: UserCheck, roles: ['admin', 'receptionist'] },
-            { path: '/insurance', label: 'Insurance & Claims', icon: ShieldCheck, roles: ['admin', 'receptionist'] },
-            { path: '/donations', label: 'Donations', icon: Gift, roles: ['admin', 'receptionist', 'doctor', 'patient'] },
-            { path: '/documents', label: 'Documents', icon: FileText, roles: ['admin', 'doctor', 'receptionist'] },
-            { path: '/ai-prediction', label: 'AI Diagnosis', icon: Stethoscope, roles: ['admin', 'doctor', 'patient'] },
-            { path: '/xray-analysis', label: 'X-Ray Analysis', icon: Scan, roles: ['admin', 'doctor'] },
-
-            // Patient Specific
-            { path: '/book-appointment', label: 'Book Appointment', icon: Calendar, roles: ['patient'] },
-            { path: '/appointments', label: 'Medical History', icon: Activity, roles: ['patient'] }, // Duplicate path, but label diff
-        ];
-
-        // Filter valid items
-        // Note: For duplicate paths (like /appointments), we filter to avoid showing twice if logic permits. 
-        // For simplicity, we just filter by role inclusion.
-        const uniqueItems = [];
-        const seenPaths = new Set();
-
-        items.forEach(item => {
-            if (item.roles.includes('all') || item.roles.includes(role)) {
-                // If patient, we prefer specific labels, so valid.
-                // Deduplicate by path ONLY if label is generic. 
-                // Using simple path key
-                if (role === 'patient' && item.path === '/appointments' && item.label === 'Appointments') return; // Skip generic 'Appointments' for patient
-
-                if (!seenPaths.has(item.path)) {
-                    seenPaths.add(item.path);
-                    uniqueItems.push(item);
-                }
-            }
-        });
-
-        return uniqueItems;
-    };
-
-    const navItems = getNavItems();
+    // Filter configuration based on role
+    const filteredConfig = sidebarConfig.map(section => ({
+        ...section,
+        items: section.items.filter(item =>
+            item.roles.includes('all') || item.roles.includes(role)
+        )
+    })).filter(section => section.items.length > 0);
 
     return (
         <motion.div
@@ -130,28 +161,43 @@ const Sidebar = ({ collapsed, toggleCollapsed }) => {
 
             {/* Nav Items */}
             <div className="flex-grow-1 overflow-y-auto overflow-x-hidden px-2 py-2 no-scrollbar">
-                <ul className="nav nav-pills flex-column gap-1">
-                    {navItems.map((item) => (
-                        <li className="nav-item" key={item.path}>
-                            <NavLink
-                                to={item.path}
-                                className={({ isActive }) =>
-                                    `nav-link-custom ${isActive ? 'active' : ''} ${collapsed ? 'justify-content-center px-0' : ''}`
-                                }
-                                title={collapsed ? item.label : ''}
-                            >
-                                <item.icon size={20} strokeWidth={1.5} />
-                                {!collapsed && <span className="text-truncate">{item.label}</span>}
-                            </NavLink>
-                        </li>
-                    ))}
-                </ul>
+                {filteredConfig.map((section, sIdx) => (
+                    <div key={sIdx} className="mb-3">
+                        {!collapsed && section.title !== "Main" && (
+                            <div className="px-3 mb-2">
+                                <span className="text-white-50 text-uppercase fw-bold tracking-wider" style={{ fontSize: '0.65rem' }}>
+                                    {section.title}
+                                </span>
+                            </div>
+                        )}
+                        <ul className="nav nav-pills flex-column gap-1">
+                            {section.items.map((item) => (
+                                <li className="nav-item" key={item.path}>
+                                    <NavLink
+                                        to={item.path}
+                                        className={({ isActive }) =>
+                                            `nav-link-custom ${isActive ? 'active' : ''} ${collapsed ? 'justify-content-center px-0' : ''}`
+                                        }
+                                        title={collapsed ? item.label : ''}
+                                    >
+                                        <item.icon size={20} strokeWidth={1.5} />
+                                        {!collapsed && <span className="text-truncate">{item.label}</span>}
+                                    </NavLink>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
             </div>
 
             {/* Footer / User Profile */}
             <div className="p-3 border-top border-secondary border-opacity-25 mt-auto">
                 <div className={`d-flex align-items-center ${collapsed ? 'justify-content-center' : 'gap-3'}`}>
-                    <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40, cursor: 'pointer' }}>
+                    <div
+                        className="rounded-circle bg-primary d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{ width: 40, height: 40, cursor: 'pointer' }}
+                        onClick={() => navigate('/profile')}
+                    >
                         <span className="fw-bold text-white font-monospace">{user.name.charAt(0)}</span>
                     </div>
 

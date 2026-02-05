@@ -87,6 +87,7 @@ const WalkInConsultation = () => {
                 const pdfBlob = doc.output('blob');
                 const formData = new FormData();
                 formData.append('patient_id', appointment.patient_id);
+                formData.append('appointment_id', id);
                 formData.append('type', 'Prescription');
                 formData.append('file', pdfBlob, `Prescription_WalkIn_${id}.pdf`);
 
@@ -133,6 +134,7 @@ const WalkInConsultation = () => {
                 const pdfBlob = doc.output('blob');
                 const formData = new FormData();
                 formData.append('patient_id', appointment.patient_id);
+                formData.append('appointment_id', id);
                 formData.append('type', 'Invoices');
                 formData.append('file', pdfBlob, `Bill_WalkIn_${id}.pdf`);
 

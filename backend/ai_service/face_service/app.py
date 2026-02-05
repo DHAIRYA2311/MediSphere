@@ -180,16 +180,59 @@ def mark_attendance():
                 best_match, best_dist = name, dist
 
         if best_match:
-            db = get_db(); c = db.cursor()
-            today = datetime.datetime.now().strftime("%Y-%m-%d")
-            c.execute("SELECT id FROM ai_attendance_logs WHERE name = %s AND DATE(time) = %s", (best_match, today))
-            if c.fetchone():
+            db = get_db(); c = db.cursor(dictionary=True)
+            now = datetime.datetime.now()
+            today = now.strftime("%Y-%m-%d")
+            current_time = now.strftime("%H:%M:%S")
+
+            # 1. Resolve User/Staff ID from Name
+            # We assume name in ai_faces is "First Last"
+            c.execute("""
+                SELECT u.user_id, s.staff_id 
+                FROM users u 
+                LEFT JOIN staff s ON u.user_id = s.user_id 
+                WHERE CONCAT(u.first_name, ' ', u.last_name) = %s 
+                LIMIT 1
+            """, (best_match,))
+            user_data = c.fetchone()
+
+            if not user_data:
                 db.close()
-                return jsonify({"status":"warning", "msg":f"Duplicate: {best_match}"})
+                return jsonify({"status":"error", "msg":f"User mapping failed for {best_match}"})
+
+            user_id = user_data['user_id']
+            staff_id = user_data['staff_id']
+
+            # 2. Check Existing Attendance for Today
+            c.execute("""
+                SELECT attendance_id, check_in_time, check_out_time 
+                FROM attendance 
+                WHERE (staff_id = %s OR user_id = %s) AND date = %s
+            """, (staff_id, user_id, today))
+            existing = c.fetchone()
+
+            if not existing:
+                # FIRST SCAN: Check-In
+                c.execute("""
+                    INSERT INTO attendance (user_id, staff_id, date, check_in_time, check_out_time, method) 
+                    VALUES (%s, %s, %s, %s, '00:00:00', 'Biometric')
+                """, (user_id, staff_id, today, current_time))
+                db.commit(); db.close()
+                return jsonify({"status":"success", "msg":f"Check-In: {best_match} at {current_time}"})
             
-            c.execute("INSERT INTO ai_attendance_logs (name, time) VALUES (%s, NOW())", (best_match,))
-            db.commit(); db.close()
-            return jsonify({"status":"success", "msg":f"Welcome {best_match}!"})
+            elif existing['check_out_time'] == datetime.timedelta(0) or str(existing['check_out_time']) == '0:00:00' or str(existing['check_out_time']) == '00:00:00':
+                # SECOND SCAN: Check-Out
+                c.execute("""
+                    UPDATE attendance 
+                    SET check_out_time = %s 
+                    WHERE attendance_id = %s
+                """, (current_time, existing['attendance_id']))
+                db.commit(); db.close()
+                return jsonify({"status":"success", "msg":f"Check-Out: {best_match} at {current_time}"})
+            
+            else:
+                db.close()
+                return jsonify({"status":"warning", "msg":f"{best_match} already completed Shift for today."})
         
         return jsonify({"status":"unknown", "msg":"Unknown person."})
     except Exception as e:

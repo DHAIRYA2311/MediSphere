@@ -28,10 +28,13 @@ try {
             p.user_id as patient_user_id,
             u.first_name, 
             u.last_name, 
-            u.email
+            u.email,
+            ic.claim_status,
+            ic.claim_id
         FROM Billing b
         JOIN Patients p ON b.patient_id = p.patient_id
         JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Insurance_Claims ic ON b.bill_id = ic.billing_id
     ";
 
     if ($role == 'patient') {

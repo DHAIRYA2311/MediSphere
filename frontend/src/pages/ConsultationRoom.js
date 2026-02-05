@@ -166,6 +166,7 @@ const ConsultationRoom = () => {
                 const pdfBlob = doc.output('blob');
                 const formData = new FormData();
                 formData.append('patient_id', patientId);
+                formData.append('appointment_id', apptId);
                 formData.append('type', 'Prescription');
                 formData.append('file', pdfBlob, `Prescription_${apptId}.pdf`);
                 const token = localStorage.getItem('token');
@@ -211,6 +212,7 @@ const ConsultationRoom = () => {
                 const pdfBlob = doc.output('blob');
                 const formData = new FormData();
                 formData.append('patient_id', patientId);
+                formData.append('appointment_id', apptId);
                 formData.append('type', 'Invoices');
                 formData.append('file', pdfBlob, `Bill_Online_${apptId}.pdf`);
                 const token = localStorage.getItem('token');

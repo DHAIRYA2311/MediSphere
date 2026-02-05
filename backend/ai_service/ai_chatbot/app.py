@@ -4,6 +4,7 @@ import mysql.connector
 from datetime import datetime
 import json
 import requests
+import bcrypt
 
 app = Flask(__name__)
 CORS(app)
@@ -30,23 +31,29 @@ def get_doctors_by_spec(spec):
     conn.close()
     return doctors
 
-def book_appointment(patient_id, doctor_id, date, time):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+def book_appointment(patient_id, doctor_id, date, time, existing_cursor=None):
+    cursor = existing_cursor
+    conn = None
+    if not cursor:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+    
     try:
         meeting_code = f"bot-{datetime.now().timestamp()}"
         cursor.execute("""
             INSERT INTO Appointments (patient_id, doctor_id, appointment_date, appointment_time, booking_method, status, notes, meeting_code)
             VALUES (%s, %s, %s, %s, 'Online', 'Confirmed', 'Booked via Chatbot', %s)
         """, (patient_id, doctor_id, date, time, meeting_code))
-        conn.commit()
+        if conn:
+            conn.commit()
         return True
     except Exception as e:
-        print(e)
+        print(f"Booking Error: {e}")
         return False
     finally:
-        cursor.close()
-        conn.close()
+        if conn:
+            cursor.close()
+            conn.close()
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -209,10 +216,67 @@ def chat():
         return jsonify(response)
 
     if state == 'guest_email':
-        # (Same registration logic as before, abbreviated here for brevity but fully functional in reality)
-        # For now, just confirming booking for strict flow compliance
-        response["text"] = "✅ Booking Confirmed! We have created a temporary account for you. Please check your email for details."
-        user_sessions[user_id] = {'state': 'start', 'context': {}}
+        user_sessions[user_id]['context']['guest_email'] = message
+        ctx = user_sessions[user_id]['context']
+        
+        # Split Name
+        name_parts = ctx['guest_name'].split(' ')
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else "Patient"
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # 1. Ensure 'Patient' role exists and get ID
+            cursor.execute("SELECT role_id FROM Roles WHERE LOWER(role_name) = 'patient'")
+            role_row = cursor.fetchone()
+            if not role_row:
+                return jsonify({"text": "System Error: Patient role not found. Please contact admin."})
+            role_id = role_row[0]
+
+            # 2. Check if Email already exists
+            cursor.execute("SELECT user_id FROM Users WHERE email = %s", (ctx['guest_email'],))
+            existing_user = cursor.fetchone()
+            if existing_user:
+                return jsonify({"text": "This email is already registered in our system. Please log in to your account to book or manage appointments. 🔐", "options": ["Login Page", "Go to Main Menu"]})
+
+            # 3. Create User record
+            print(f"[BOT] Registering new guest user: {ctx['guest_email']}")
+            hashed_pass = bcrypt.hashpw('temp123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            cursor.execute("""
+                INSERT INTO Users (role_id, first_name, last_name, email, phone, password, gender, dob, address, created_at, status)
+                VALUES (%s, %s, %s, %s, %s, %s, 'Other', '2000-01-01', 'Online Registration', CURDATE(), 'Active')
+            """, (role_id, first_name, last_name, ctx['guest_email'], ctx['guest_phone'], hashed_pass))
+            new_user_id = cursor.lastrowid
+            
+            # 4. Create Patient record
+            cursor.execute("""
+                INSERT INTO Patients (user_id, blood_group, emergency_contact, insurance_number, medical_history)
+                VALUES (%s, 'N/A', %s, 'N/A', 'Registration via AI Bot')
+            """, (new_user_id, ctx['guest_phone']))
+            new_patient_id = cursor.lastrowid
+            
+            # 5. Finalize Appointment
+            success = book_appointment(new_patient_id, ctx['doctor_id'], ctx['date'], ctx['time'], cursor)
+            
+            if success:
+                conn.commit()
+                print(f"[BOT] Appointment successfully booked for Patient {new_patient_id}")
+                response["text"] = f"✅ Success, {first_name}! Your profile is created and appointment is confirmed for {ctx['date']} at {ctx['time']}.\n\n🔑 TEMPORARY LOGIN:\nEmail: {ctx['guest_email']}\nPass: temp123"
+            else:
+                conn.rollback()
+                response["text"] = "Something went wrong during booking. Please try again."
+                
+        except Exception as e:
+            conn.rollback()
+            print(f"Chatbot Registration Error: {e}")
+            response["text"] = "Database error. Please try again later."
+        finally:
+            cursor.close()
+            conn.close()
+            user_sessions[user_id] = {'state': 'start', 'context': {}}
+        
         return jsonify(response)
 
     # --- FALLBACK ---

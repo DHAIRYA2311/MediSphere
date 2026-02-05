@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import DataTable from '../components/DataTable';
-import { Calendar, User, Video, CheckCircle, BedDouble, FileText, Activity } from 'lucide-react';
+import { Calendar, User, Video, CheckCircle, BedDouble, FileText, Activity, Plus, Clock, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '../components/Skeleton';
 
@@ -17,8 +17,22 @@ const MyAppointments = () => {
     const [freeBeds, setFreeBeds] = useState([]);
     const [selectedBed, setSelectedBed] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showAddAppt, setShowAddAppt] = useState(false);
+    const [doctors, setDoctors] = useState([]);
+    const [allPatients, setAllPatients] = useState([]);
+    const [newApptData, setNewApptData] = useState({
+        patient_id: '',
+        doctor_id: '',
+        date: '',
+        time: '',
+        method: 'Online',
+        notes: ''
+    });
 
-    const isDoctor = user?.role === 'doctor';
+    const isStaff = ['admin', 'receptionist', 'staff'].includes(user?.role?.toLowerCase());
+    const isDoctor = user?.role?.toLowerCase() === 'doctor';
+    const isPatient = user?.role?.toLowerCase() === 'patient';
+
 
     useEffect(() => {
         fetchAppointments();
@@ -31,6 +45,52 @@ const MyAppointments = () => {
             setAppointments(res.data);
         }
         setLoading(false);
+    };
+
+    const fetchDoctors = async () => {
+        const res = await api.get('doctors/list.php');
+        if (res.status === 'success') setDoctors(res.data);
+    };
+
+    const fetchAllPatients = async () => {
+        if (!isStaff && !isDoctor) return;
+        const res = await api.get('patients/list.php');
+        if (res.status === 'success') setAllPatients(res.data);
+    };
+
+    const handleNewApptClick = () => {
+        fetchDoctors();
+        if (isStaff || isDoctor) fetchAllPatients();
+
+        // Reset form
+        setNewApptData({
+            patient_id: '',
+            doctor_id: '',
+            date: new Date().toISOString().split('T')[0],
+            time: '10:00',
+            method: 'Online',
+            notes: ''
+        });
+        setShowAddAppt(true);
+    };
+
+    const handleBookAppt = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            const res = await api.post('appointments/book.php', newApptData);
+            if (res.status === 'success') {
+                alert("Appointment booked successfully!");
+                setShowAddAppt(false);
+                fetchAppointments();
+            } else {
+                alert(res.message);
+            }
+        } catch (err) {
+            alert("Failed to book appointment");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const fetchFreeBeds = async () => {
@@ -202,6 +262,11 @@ const MyAppointments = () => {
                     <h2 className="fw-bold text-dark">{isDoctor ? 'My Assessments' : 'Medical History'}</h2>
                     <p className="text-muted">{isDoctor ? 'Manage patient consultations' : 'Track your health records'}</p>
                 </div>
+                {!isDoctor && (
+                    <button className="btn btn-primary d-flex align-items-center gap-2 rounded-pill px-4 shadow-sm" onClick={handleNewApptClick}>
+                        <Plus size={18} /> Book Appointment
+                    </button>
+                )}
             </div>
 
             {loading ? (
@@ -299,6 +364,112 @@ const MyAppointments = () => {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+            {/* New Appointment Modal */}
+            <AnimatePresence>
+                {showAddAppt && (
+                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                <form onSubmit={handleBookAppt}>
+                                    <div className="modal-header border-bottom-0 bg-primary text-white p-4">
+                                        <h5 className="modal-title fw-bold">Schedule New Appointment</h5>
+                                        <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddAppt(false)}></button>
+                                    </div>
+                                    <div className="modal-body p-4">
+                                        {(isStaff || isDoctor) && (
+                                            <div className="mb-3">
+                                                <label className="form-label small fw-bold text-muted">Select Patient</label>
+                                                <select
+                                                    className="form-select bg-light border-0"
+                                                    value={newApptData.patient_id}
+                                                    onChange={(e) => setNewApptData({ ...newApptData, patient_id: e.target.value })}
+                                                    required
+                                                >
+                                                    <option value="">-- Choose Patient --</option>
+                                                    {allPatients.map(p => (
+                                                        <option key={p.patient_id} value={p.patient_id}>{p.first_name} {p.last_name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        <div className="mb-3">
+                                            <label className="form-label small fw-bold text-muted">Select Doctor</label>
+                                            <select
+                                                className="form-select bg-light border-0"
+                                                value={newApptData.doctor_id}
+                                                onChange={(e) => setNewApptData({ ...newApptData, doctor_id: e.target.value })}
+                                                required
+                                            >
+                                                <option value="">-- Choose Doctor --</option>
+                                                {doctors.map(d => (
+                                                    <option key={d.doctor_id} value={d.doctor_id}>Dr. {d.first_name} {d.last_name} ({d.specialization})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="row g-3 mb-3">
+                                            <div className="col-md-6">
+                                                <label className="form-label small fw-bold text-muted"><Calendar size={14} className="me-1" /> Date</label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control bg-light border-0"
+                                                    value={newApptData.date}
+                                                    min={new Date().toISOString().split('T')[0]}
+                                                    onChange={(e) => setNewApptData({ ...newApptData, date: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label className="form-label small fw-bold text-muted"><Clock size={14} className="me-1" /> Time</label>
+                                                <input
+                                                    type="time"
+                                                    className="form-control bg-light border-0"
+                                                    value={newApptData.time}
+                                                    onChange={(e) => setNewApptData({ ...newApptData, time: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-3">
+                                            <label className="form-label small fw-bold text-muted">Consultation Mode</label>
+                                            <div className="d-flex gap-3 mt-1">
+                                                <div className="form-check">
+                                                    <input className="form-check-input" type="radio" name="method" id="online" value="Online"
+                                                        checked={newApptData.method === 'Online'} onChange={(e) => setNewApptData({ ...newApptData, method: e.target.value })} />
+                                                    <label className="form-check-label small" htmlFor="online">Online / Video</label>
+                                                </div>
+                                                <div className="form-check">
+                                                    <input className="form-check-input" type="radio" name="method" id="walkin" value="Walk-in"
+                                                        checked={newApptData.method === 'Walk-in'} onChange={(e) => setNewApptData({ ...newApptData, method: e.target.value })} />
+                                                    <label className="form-check-label small" htmlFor="walkin">In-Person / Walk-in</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-0">
+                                            <label className="form-label small fw-bold text-muted"><MessageSquare size={14} className="me-1" /> Symptoms / Notes</label>
+                                            <textarea
+                                                className="form-control bg-light border-0"
+                                                rows="3"
+                                                value={newApptData.notes}
+                                                onChange={(e) => setNewApptData({ ...newApptData, notes: e.target.value })}
+                                                placeholder="Briefly describe your health concern..."
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer border-top-0 p-4 pt-0">
+                                        <button type="submit" className="btn btn-primary w-100 py-3 rounded-pill fw-bold" disabled={isSubmitting}>
+                                            {isSubmitting ? 'Booking...' : 'Confirm Booking'}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </motion.div>
                     </div>

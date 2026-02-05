@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Search, Bell, Menu, User, Settings, LogOut } from 'lucide-react';
 import NotificationDropdown from './NotificationDropdown';
@@ -41,14 +42,9 @@ const Navbar = ({ toggleSidebar, collapsed }) => {
                     <ul className="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2" aria-labelledby="navbarDropdown" style={{ borderRadius: '12px', minWidth: '200px' }}>
                         <li><h6 className="dropdown-header text-uppercase fs-7 fw-bold text-muted">Account</h6></li>
                         <li>
-                            <button className="dropdown-item d-flex align-items-center gap-2 rounded-2 py-2">
+                            <Link to="/profile" className="dropdown-item d-flex align-items-center gap-2 rounded-2 py-2 text-decoration-none">
                                 <User size={16} /> Profile
-                            </button>
-                        </li>
-                        <li>
-                            <button className="dropdown-item d-flex align-items-center gap-2 rounded-2 py-2">
-                                <Settings size={16} /> Settings
-                            </button>
+                            </Link>
                         </li>
                         <li><hr className="dropdown-divider" /></li>
                         <li>

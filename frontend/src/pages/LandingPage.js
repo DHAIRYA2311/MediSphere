@@ -61,7 +61,7 @@ const LandingPage = () => {
             // Use the new public endpoint
             // Note: api helper might attach token, but here we don't have one? 
             // The api helper is likely a wrapper around fetch. If no token, it sends none.
-            const res = await fetch('http://localhost/Medisphere-Project/backend/api/public/book_appointment.php', {
+            const res = await fetch('http://localhost:8080/Medisphere-Project/backend/api/public/book_appointment.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bookingData)
