@@ -231,3 +231,11 @@ INSERT INTO Roles (role_name) SELECT 'Doctor' WHERE NOT EXISTS (SELECT * FROM Ro
 INSERT INTO Roles (role_name) SELECT 'Patient' WHERE NOT EXISTS (SELECT * FROM Roles WHERE role_name = 'Patient');
 INSERT INTO Roles (role_name) SELECT 'Receptionist' WHERE NOT EXISTS (SELECT * FROM Roles WHERE role_name = 'Receptionist');
 
+CREATE TABLE ai_faces (
+    face_id INTEGER(10) PRIMARY KEY AUTO_INCREMENT,
+    user_id INTEGER(10) NOT NULL,
+    embedding JSON NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
+

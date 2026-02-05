@@ -142,21 +142,29 @@ def video_feed():
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
-    name = data.get('name')
+    user_id = data.get('user_id')
     frame = core.get_frame()
     if frame is None: return jsonify({"status":"error", "msg":"Camera not ready"})
 
     try:
-        # Reduced enforcement for registration
+        # Feature Extraction
         res = DeepFace.represent(frame, model_name='Facenet', enforce_detection=False)
         emb = res[0]['embedding']
         db = get_db(); c = db.cursor()
-        c.execute("DELETE FROM ai_faces WHERE name = %s", (name,))
-        c.execute("INSERT INTO ai_faces (name, embedding) VALUES (%s, %s)", (name, json.dumps(emb)))
+        
+        # Remove existing registration for this user
+        c.execute("DELETE FROM ai_faces WHERE user_id = %s", (user_id,))
+        
+        # Insert new registration
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        c.execute("INSERT INTO ai_faces (user_id, embedding, created_at) VALUES (%s, %s, %s)", 
+                  (user_id, json.dumps(emb), now))
+        
         db.commit(); db.close()
-        return jsonify({"status":"success", "msg":f"{name} Registered!"})
+        return jsonify({"status":"success", "msg":f"User ID {user_id} Face Registered!"})
     except Exception as e:
-        return jsonify({"status":"error", "msg":"Registration failed. Look at camera."})
+        print(f"[ERROR] Registration: {str(e)}")
+        return jsonify({"status":"error", "msg":"Registration failed. Center your face."})
 
 @app.route('/mark_attendance', methods=['POST'])
 def mark_attendance():
@@ -164,79 +172,70 @@ def mark_attendance():
     if frame is None: return jsonify({"status":"error", "msg":"Camera not ready"})
 
     try:
-        db = get_db(); c = db.cursor()
-        c.execute("SELECT name, embedding FROM ai_faces")
+        db = get_db(); c = db.cursor(dictionary=True)
+        # Join with Users to get the names directly
+        c.execute("""
+            SELECT f.user_id, f.embedding, u.first_name, u.last_name 
+            FROM ai_faces f
+            JOIN Users u ON f.user_id = u.user_id
+        """)
         rows = c.fetchall(); db.close()
-        if not rows: return jsonify({"status":"error", "msg":"No faces in system."})
+        if not rows: return jsonify({"status":"error", "msg":"No faces registered in system."})
 
-        # Feature Extraction
+        # Extraction from Live Frame
         res = DeepFace.represent(frame, model_name='Facenet', enforce_detection=False)
         live_emb = res[0]['embedding']
 
-        best_match, best_dist = None, 0.45
-        for name, emb_json in rows:
-            dist = DeepFace.verify(live_emb, json.loads(emb_json), model_name='Facenet', enforce_detection=False, distance_metric='cosine')['distance']
+        best_match = None
+        best_dist = 0.40 # Stricter threshold for production
+
+        for row in rows:
+            dist = DeepFace.verify(live_emb, json.loads(row['embedding']), 
+                                  model_name='Facenet', enforce_detection=False, 
+                                  distance_metric='cosine')['distance']
             if dist < best_dist:
-                best_match, best_dist = name, dist
+                best_match = row
+                best_dist = dist
 
         if best_match:
+            user_id = best_match['user_id']
+            full_name = f"{best_match['first_name']} {best_match['last_name']}"
+            
             db = get_db(); c = db.cursor(dictionary=True)
             now = datetime.datetime.now()
             today = now.strftime("%Y-%m-%d")
             current_time = now.strftime("%H:%M:%S")
 
-            # 1. Resolve User/Staff ID from Name
-            # We assume name in ai_faces is "First Last"
-            c.execute("""
-                SELECT u.user_id, s.staff_id 
-                FROM users u 
-                LEFT JOIN staff s ON u.user_id = s.user_id 
-                WHERE CONCAT(u.first_name, ' ', u.last_name) = %s 
-                LIMIT 1
-            """, (best_match,))
-            user_data = c.fetchone()
+            # Resolve Staff ID if exists
+            c.execute("SELECT staff_id FROM staff WHERE user_id = %s LIMIT 1", (user_id,))
+            staff_res = c.fetchone()
+            staff_id = staff_res['staff_id'] if staff_res else None
 
-            if not user_data:
-                db.close()
-                return jsonify({"status":"error", "msg":f"User mapping failed for {best_match}"})
-
-            user_id = user_data['user_id']
-            staff_id = user_data['staff_id']
-
-            # 2. Check Existing Attendance for Today
-            c.execute("""
-                SELECT attendance_id, check_in_time, check_out_time 
-                FROM attendance 
-                WHERE (staff_id = %s OR user_id = %s) AND date = %s
-            """, (staff_id, user_id, today))
+            # Check Attendance Ledger
+            c.execute("SELECT attendance_id, check_in_time, check_out_time FROM attendance WHERE user_id = %s AND date = %s", (user_id, today))
             existing = c.fetchone()
 
             if not existing:
-                # FIRST SCAN: Check-In
                 c.execute("""
                     INSERT INTO attendance (user_id, staff_id, date, check_in_time, check_out_time, method) 
                     VALUES (%s, %s, %s, %s, '00:00:00', 'Biometric')
                 """, (user_id, staff_id, today, current_time))
                 db.commit(); db.close()
-                return jsonify({"status":"success", "msg":f"Check-In: {best_match} at {current_time}"})
+                return jsonify({"status":"success", "msg":f"Welcome {full_name}! Check-in at {current_time}"})
             
-            elif existing['check_out_time'] == datetime.timedelta(0) or str(existing['check_out_time']) == '0:00:00' or str(existing['check_out_time']) == '00:00:00':
-                # SECOND SCAN: Check-Out
-                c.execute("""
-                    UPDATE attendance 
-                    SET check_out_time = %s 
-                    WHERE attendance_id = %s
-                """, (current_time, existing['attendance_id']))
+            elif existing['check_out_time'] in [None, '00:00:00', datetime.timedelta(0)]:
+                c.execute("UPDATE attendance SET check_out_time = %s WHERE attendance_id = %s", (current_time, existing['attendance_id']))
                 db.commit(); db.close()
-                return jsonify({"status":"success", "msg":f"Check-Out: {best_match} at {current_time}"})
+                return jsonify({"status":"success", "msg":f"Goodbye {full_name}! Check-out at {current_time}"})
             
             else:
                 db.close()
-                return jsonify({"status":"warning", "msg":f"{best_match} already completed Shift for today."})
+                return jsonify({"status":"warning", "msg":f"{full_name} has already logged a full shift today."})
         
-        return jsonify({"status":"unknown", "msg":"Unknown person."})
+        return jsonify({"status":"unknown", "msg":"Face not recognized. Try again."})
     except Exception as e:
-        return jsonify({"status":"error", "msg":"Recognition error. Center your face."})
+        print(f"[ERROR] Recognition: {str(e)}")
+        return jsonify({"status":"error", "msg":"Recognition error. Please face the camera."})
 
 if __name__ == '__main__':
     print("\n[BOOT] BIOMETRIC CORE v4.2")

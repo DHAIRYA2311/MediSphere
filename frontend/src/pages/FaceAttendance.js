@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../services/api'; // Add api service
 import {
     Camera, UserCheck, ShieldAlert, RefreshCw,
     Maximize2, Zap, User, Clock, CheckCircle2, AlertCircle,
@@ -13,14 +14,27 @@ const FaceAttendance = () => {
     const [cameraActive, setCameraActive] = useState(true);
     const [scanProgress, setScanProgress] = useState(0);
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [regName, setRegName] = useState('');
+    const [selectedUserId, setSelectedUserId] = useState('');
+    const [users, setUsers] = useState([]);
 
     const SERVICE_URL = "http://localhost:5001";
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        fetchUsers();
         return () => clearInterval(timer);
     }, []);
+
+    const fetchUsers = async () => {
+        try {
+            const res = await api.get('users/list.php'); // Assuming admin/staff access
+            if (res.status === 'success') {
+                setUsers(res.data);
+            }
+        } catch (e) {
+            console.error("Failed to fetch users", e);
+        }
+    };
 
     const markAttendance = async () => {
         setStatus('loading');
@@ -59,27 +73,30 @@ const FaceAttendance = () => {
     };
 
     const registerFace = async () => {
-        if (!regName.trim()) {
+        if (!selectedUserId) {
             setStatus('error');
-            setMessage('Please enter a name for registration.');
+            setMessage('Please select a user to enroll.');
             return;
         }
 
+        const user = users.find(u => u.user_id == selectedUserId);
+        const name = user ? `${user.first_name} ${user.last_name}` : 'User';
+
         setStatus('loading');
-        setMessage(`Capturing Biometrics for ${regName}...`);
+        setMessage(`Capturing Biometrics for ${name}...`);
 
         try {
             const res = await fetch(`${SERVICE_URL}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: regName })
+                body: JSON.stringify({ user_id: selectedUserId })
             });
             const data = await res.json();
 
             if (data.status === 'success') {
                 setStatus('success');
                 setMessage(data.msg);
-                setRegName('');
+                setSelectedUserId('');
                 setTimeout(() => {
                     setMode('attendance');
                     resetScanner();
@@ -263,17 +280,22 @@ const FaceAttendance = () => {
                         <div className="mt-auto">
                             {mode === 'register' ? (
                                 <div className="mb-4">
-                                    <label className="form-label small fw-bold text-secondary">FULL NAME FOR SYSTEM IDENTIFIER</label>
+                                    <label className="form-label small fw-bold text-secondary text-uppercase mb-2">Select User for Biometric Link</label>
                                     <div className="input-group input-group-lg shadow-sm">
                                         <span className="input-group-text bg-white border-end-0"><User size={20} className="text-muted" /></span>
-                                        <input
-                                            type="text"
-                                            className="form-control bg-white border-start-0 fs-6 ps-1"
-                                            placeholder="e.g. Dr. Jane Smith"
-                                            value={regName}
-                                            onChange={(e) => setRegName(e.target.value)}
+                                        <select
+                                            className="form-select bg-white border-start-0 fs-6 ps-1"
+                                            value={selectedUserId}
+                                            onChange={(e) => setSelectedUserId(e.target.value)}
                                             disabled={status === 'loading'}
-                                        />
+                                        >
+                                            <option value="">-- Choose Staff/User --</option>
+                                            {users.map(u => (
+                                                <option key={u.user_id} value={u.user_id}>
+                                                    {u.first_name} {u.last_name} ({u.role_name || 'User'})
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                             ) : null}
