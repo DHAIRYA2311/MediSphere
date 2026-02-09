@@ -9,7 +9,6 @@ import {
     Edit2,
     Trash2,
     ArrowRightLeft,
-    Move,
     PlusCircle,
     XCircle
 } from 'lucide-react';
@@ -219,7 +218,7 @@ const BedManagement = () => {
             formData.append('file', pdfBlob, `Discharge_Bill_${selectedBed.bed_id}.pdf`);
 
             const token = localStorage.getItem('token');
-            await fetch('http://localhost:8080/Medisphere-Project/backend/api/documents/upload.php', {
+            await fetch('http://localhost:8080/MediSphere/backend/api/documents/upload.php', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
@@ -348,6 +347,58 @@ const BedManagement = () => {
                         <Plus size={18} /> New Ward
                     </button>
                 )}
+            </div>
+
+            {/* Stats Row */}
+            <div className="row g-4 mb-4">
+                {[
+                    {
+                        icon: Building,
+                        title: 'Total Wards',
+                        value: wards.length,
+                        color: 'primary'
+                    },
+                    {
+                        icon: BedDouble,
+                        title: 'Total Beds',
+                        value: wards.reduce((acc, w) => acc + Number(w.total_beds || 0), 0),
+                        color: 'info'
+                    },
+                    {
+                        icon: CheckCircle,
+                        title: 'Available',
+                        value: wards.reduce((acc, w) => acc + (Number(w.total_beds || 0) - Number(w.occupied_beds || 0)), 0),
+                        color: 'success'
+                    },
+                    {
+                        icon: XCircle,
+                        title: 'Occupied',
+                        value: wards.reduce((acc, w) => acc + Number(w.occupied_beds || 0), 0),
+                        color: 'danger'
+                    }
+                ].map((stat, idx) => (
+                    <div className="col-md-3" key={idx}>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className="card border-0 shadow-sm h-100"
+                            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 100%)', backdropFilter: 'blur(10px)' }}
+                        >
+                            <div className="card-body p-4">
+                                <div className="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <p className="text-muted small mb-1 text-uppercase fw-bold" style={{ letterSpacing: '0.5px' }}>{stat.title}</p>
+                                        <h2 className="fw-bold mb-0" style={{ color: 'var(--text-main)' }}>{stat.value}</h2>
+                                    </div>
+                                    <div className={`rounded-3 p-3 bg-${stat.color} bg-opacity-10`}>
+                                        <stat.icon size={24} className={`text-${stat.color}`} />
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                ))}
             </div>
 
             {/* Wards Grid */}
@@ -502,12 +553,12 @@ const BedManagement = () => {
             {/* Create Ward Modal */}
             <AnimatePresence>
                 {showCreateWard && (
-                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="modal-dialog modal-dialog-centered">
-                            <div className="modal-content border-0 shadow-lg rounded-4">
-                                <div className="modal-header border-bottom-0 p-4">
+                            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                <div className="modal-header border-bottom-0 p-4 bg-primary text-white" style={{ background: 'linear-gradient(135deg, #5eaab5 0%, #7fc4ce 100%)' }}>
                                     <h5 className="modal-title fw-bold">Create New Ward</h5>
-                                    <button type="button" className="btn-close" onClick={() => setShowCreateWard(false)}></button>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowCreateWard(false)}></button>
                                 </div>
                                 <div className="modal-body p-4 pt-0">
                                     <form onSubmit={handleCreateWard}>
@@ -524,12 +575,12 @@ const BedManagement = () => {
             {/* Add Bed Modal */}
             <AnimatePresence>
                 {showAddBed && (
-                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="modal-dialog modal-dialog-centered modal-sm">
-                            <div className="modal-content border-0 shadow-lg rounded-4">
-                                <div className="modal-header border-bottom-0 p-4">
+                            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                <div className="modal-header border-bottom-0 p-4 bg-primary text-white" style={{ background: 'linear-gradient(135deg, #5eaab5 0%, #7fc4ce 100%)' }}>
                                     <h5 className="modal-title fw-bold">Add Bed</h5>
-                                    <button type="button" className="btn-close" onClick={() => setShowAddBed(false)}></button>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddBed(false)}></button>
                                 </div>
                                 <div className="modal-body p-4 pt-0">
                                     <form onSubmit={handleAddBedSubmit}>
@@ -545,12 +596,12 @@ const BedManagement = () => {
             {/* Allocate Modal */}
             <AnimatePresence>
                 {showAllocate && (
-                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="modal-dialog modal-dialog-centered">
-                            <div className="modal-content border-0 shadow-lg rounded-4">
-                                <div className="modal-header border-bottom-0 p-4">
+                            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                <div className="modal-header border-bottom-0 p-4 bg-primary text-white" style={{ background: 'linear-gradient(135deg, #198754 0%, #20c997 100%)' }}>
                                     <h5 className="modal-title fw-bold">Allocate Bed</h5>
-                                    <button type="button" className="btn-close" onClick={() => setShowAllocate(false)}></button>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowAllocate(false)}></button>
                                 </div>
                                 <div className="modal-body p-4 pt-0">
                                     <form onSubmit={handleAllocate}>
@@ -573,12 +624,12 @@ const BedManagement = () => {
             {/* Edit Bed Modal */}
             <AnimatePresence>
                 {showEditBed && (
-                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="modal-dialog modal-dialog-centered modal-sm">
-                            <div className="modal-content border-0 shadow-lg rounded-4">
-                                <div className="modal-header border-bottom-0 p-4">
+                            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                <div className="modal-header border-bottom-0 p-4 bg-primary text-white" style={{ background: 'linear-gradient(135deg, #6c757d 0%, #adb5bd 100%)' }}>
                                     <h5 className="modal-title fw-bold">Edit Bed</h5>
-                                    <button type="button" className="btn-close" onClick={() => setShowEditBed(false)}></button>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowEditBed(false)}></button>
                                 </div>
                                 <div className="modal-body p-4 pt-0">
                                     <form onSubmit={handleEdit}>
@@ -598,12 +649,12 @@ const BedManagement = () => {
             {/* Move Patient Modal */}
             <AnimatePresence>
                 {showMoveBed && (
-                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="modal-dialog modal-dialog-centered">
-                            <div className="modal-content border-0 shadow-lg rounded-4">
-                                <div className="modal-header border-bottom-0 p-4">
-                                    <h5 className="modal-title fw-bold text-primary"><ArrowRightLeft className="me-2" />Move Patient</h5>
-                                    <button type="button" className="btn-close" onClick={() => setShowMoveBed(false)}></button>
+                            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                <div className="modal-header border-bottom-0 p-4 bg-primary text-white" style={{ background: 'linear-gradient(135deg, #0dcaf0 0%, #398bf7 100%)' }}>
+                                    <h5 className="modal-title fw-bold text-white"><ArrowRightLeft className="me-2" />Move Patient</h5>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setShowMoveBed(false)}></button>
                                 </div>
                                 <div className="modal-body p-4 pt-0">
                                     <div className="alert alert-light border mb-4">

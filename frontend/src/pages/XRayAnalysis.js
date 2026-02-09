@@ -29,6 +29,9 @@ const XRayAnalysis = () => {
         formData.append('file', selectedFile);
 
         try {
+            // Demo Mode Check (implicit if fails or explicit button?)
+            // For now, let's catch the error and offer demo result if service is offline.
+
             // Direct call to Python Service
             const res = await fetch('http://localhost:5003/analyze_xray', {
                 method: 'POST',
@@ -45,10 +48,24 @@ const XRayAnalysis = () => {
             }
 
         } catch (e) {
+            console.log("Service offline, switching to demo mode logic check...");
+            // Allow user to use demo mode via a button in the error message?
+            // Or auto-fallback? Let's add a "Try Demo" button in the error UI.
             setError(e.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    const runDemoAnalysis = () => {
+        setLoading(true);
+        setError("");
+        setTimeout(() => {
+            setAnalysis(
+                "### Normal Chest X-Ray\nNo abnormalities detected in the lung fields. Heart size is normal. Bones and soft tissues appear unremarkable.\n\n### Recommendation\nNo further action required. Routine follow-up recommended."
+            );
+            setLoading(false);
+        }, 1500);
     };
 
     // Helper to format the markdown-like response
@@ -140,8 +157,16 @@ const XRayAnalysis = () => {
                             )}
 
                             {error && (
-                                <div className="alert alert-danger mt-3 d-flex align-items-center gap-2">
-                                    <AlertTriangle size={18} /> {error}
+                                <div className="alert alert-danger mt-3">
+                                    <div className="d-flex align-items-center gap-2">
+                                        <AlertTriangle size={18} /> {error}
+                                    </div>
+                                    <button
+                                        className="btn btn-sm btn-outline-danger mt-2 fw-bold w-100"
+                                        onClick={runDemoAnalysis}
+                                    >
+                                        Try Demo Analysis
+                                    </button>
                                 </div>
                             )}
                         </div>

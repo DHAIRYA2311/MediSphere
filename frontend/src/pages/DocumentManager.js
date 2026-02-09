@@ -4,7 +4,7 @@ import DataTable from '../components/DataTable';
 import { FileText, Upload, Filter, ExternalLink, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API_BASE = "http://localhost:8080/Medisphere-Project/backend"; // Needed for linking files
+const API_BASE = "http://localhost:8080/MediSphere/backend"; // Needed for linking files
 
 const DocumentManager = () => {
     const [documents, setDocuments] = useState([]);

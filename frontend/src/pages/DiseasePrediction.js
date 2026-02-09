@@ -46,10 +46,24 @@ const DiseasePrediction = () => {
                 setError(data.msg || "Prediction failed.");
             }
         } catch (e) {
-            setError("Service Offline. Ensure Python AI Service (Port 5004) is running.");
+            setError("Service Offline.");
         } finally {
             setLoading(false);
         }
+    };
+
+    const runDemoPrediction = () => {
+        setLoading(true);
+        setError('');
+        setResult(null);
+        setTimeout(() => {
+            setResult({
+                disease: "Viral Influenza",
+                confidence: "87%",
+                features_used: selectedSymptoms
+            });
+            setLoading(false);
+        }, 1500);
     };
 
     const handleReset = () => {
@@ -62,51 +76,83 @@ const DiseasePrediction = () => {
         <div className="container-fluid py-4 fade-in">
             <div className="row justify-content-center">
                 <div className="col-md-8">
+                    {/* Header Section */}
                     <motion.div initial={{ y: -20 }} animate={{ y: 0 }} className="text-center mb-5">
-                        <h2 className="fw-bold text-dark d-flex align-items-center justify-content-center gap-2">
-                            <Stethoscope size={32} className="text-primary" />
-                            AI Disease Predictor
-                        </h2>
+                        <div className="d-inline-flex align-items-center gap-3 mb-3">
+                            <div className="rounded-3 p-3" style={{ background: 'linear-gradient(135deg, #1a3a4a 0%, #2d5a6e 100%)' }}>
+                                <Stethoscope size={32} className="text-white" />
+                            </div>
+                            <h2 className="fw-bold mb-0" style={{ color: 'var(--text-main)' }}>AI Disease Predictor</h2>
+                        </div>
                         <p className="text-muted">Select your symptoms to get an AI-powered preliminary diagnosis.</p>
                     </motion.div>
 
-                    <div className="card border-0 shadow-lg rounded-4 overflow-hidden">
-                        <div className="card-header bg-primary text-white p-4">
-                            <h5 className="mb-0 fw-bold"><Activity className="me-2" /> Symptom Checker</h5>
+                    {/* Main Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="card border-0 shadow-lg rounded-4 overflow-hidden"
+                        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)', backdropFilter: 'blur(20px)' }}
+                    >
+                        {/* Teal Gradient Header */}
+                        <div className="p-4" style={{ background: 'linear-gradient(135deg, #1a3a4a 0%, #2d5a6e 100%)' }}>
+                            <h5 className="mb-0 fw-bold text-white d-flex align-items-center gap-2">
+                                <Activity size={20} />
+                                Symptom Checker
+                            </h5>
                         </div>
-                        <div className="card-body p-5">
-                            <label className="fw-bold text-muted mb-3 d-block">Select all that apply:</label>
 
+                        <div className="card-body p-5">
+                            <label className="fw-bold text-uppercase small mb-3 d-block" style={{ color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
+                                Select all that apply:
+                            </label>
+
+                            {/* Symptom Chips */}
                             <div className="d-flex flex-wrap gap-2 mb-4">
                                 {symptomsList.map(sym => (
-                                    <button
+                                    <motion.button
                                         key={sym}
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
                                         onClick={() => toggleSymptom(sym)}
-                                        className={`btn rounded-pill px-4 py-2 border transition-all ${selectedSymptoms.includes(sym)
-                                                ? 'btn-primary shadow-sm'
-                                                : 'btn-outline-secondary bg-light text-dark border-0'
+                                        className={`btn rounded-pill px-4 py-2 border-0 transition-all fw-medium ${selectedSymptoms.includes(sym)
+                                            ? 'text-white shadow-sm'
+                                            : 'text-dark'
                                             }`}
+                                        style={{
+                                            background: selectedSymptoms.includes(sym)
+                                                ? 'linear-gradient(135deg, #1a3a4a 0%, #2d5a6e 100%)'
+                                                : 'rgba(255,255,255,0.8)',
+                                            border: selectedSymptoms.includes(sym) ? 'none' : '1px solid rgba(0,0,0,0.08)'
+                                        }}
                                     >
-                                        {selectedSymptoms.includes(sym) && <CheckCircle size={16} className="me-2 inline-block" />}
+                                        {selectedSymptoms.includes(sym) && <CheckCircle size={16} className="me-2" />}
                                         {sym.replace(/([A-Z])/g, ' $1').trim()}
-                                    </button>
+                                    </motion.button>
                                 ))}
                             </div>
 
+                            {/* Action Buttons */}
                             <div className="d-grid gap-2">
-                                <button
-                                    className="btn btn-primary btn-lg rounded-pill shadow-sm"
+                                <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
+                                    className="btn btn-lg rounded-pill text-white shadow fw-bold py-3"
+                                    style={{ background: 'linear-gradient(135deg, #1a3a4a 0%, #2d5a6e 100%)' }}
                                     onClick={handlePredict}
                                     disabled={loading}
                                 >
                                     {loading ? (
                                         <span><span className="spinner-border spinner-border-sm me-2"></span>Analyzing...</span>
                                     ) : (
-                                        "Predict Disease"
+                                        <>
+                                            <Stethoscope size={20} className="me-2" />
+                                            Predict Disease
+                                        </>
                                     )}
-                                </button>
+                                </motion.button>
                                 {result && (
-                                    <button className="btn btn-link text-muted" onClick={handleReset}>
+                                    <button className="btn btn-link" style={{ color: 'var(--text-muted)' }} onClick={handleReset}>
                                         <RefreshCw size={14} className="me-1" /> Start Over
                                     </button>
                                 )}
@@ -120,19 +166,19 @@ const DiseasePrediction = () => {
                                         animate={{ opacity: 1, height: 'auto' }}
                                         className="mt-4"
                                     >
-                                        <div className="alert alert-success border-0 bg-success bg-opacity-10 rounded-4 p-4 text-center">
-                                            <h6 className="text-success text-uppercase fw-bold mb-2">Predicted Condition</h6>
-                                            <h1 className="display-4 fw-bold text-dark mb-2">{result.disease}</h1>
-                                            <div className="badge bg-success px-3 py-2 rounded-pill fs-6">
+                                        <div className="rounded-4 p-4 text-center" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                            <p className="small text-uppercase fw-bold mb-2" style={{ color: '#059669', letterSpacing: '0.5px' }}>Predicted Condition</p>
+                                            <h1 className="display-5 fw-bold mb-3" style={{ color: 'var(--text-main)' }}>{result.disease}</h1>
+                                            <div className="d-inline-block px-4 py-2 rounded-pill fw-bold text-white" style={{ background: '#10b981' }}>
                                                 Confidence: {result.confidence}
                                             </div>
-                                            <p className="mt-3 text-muted small">
+                                            <p className="mt-3 text-muted small mb-0">
                                                 Based on: {result.features_used.join(', ')}
                                             </p>
                                         </div>
-                                        <div className="alert alert-warning d-flex align-items-center gap-3 border-0 bg-warning bg-opacity-10 text-dark rounded-3">
-                                            <AlertTriangle size={24} className="text-warning flex-shrink-0" />
-                                            <small className="mb-0">
+                                        <div className="d-flex align-items-center gap-3 p-3 rounded-3 mt-3" style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                                            <AlertTriangle size={24} style={{ color: '#d97706' }} className="flex-shrink-0" />
+                                            <small className="mb-0" style={{ color: 'var(--text-secondary)' }}>
                                                 <strong>Disclaimer:</strong> This is an AI-generated prediction for informational purposes only.
                                                 It is not a substitute for professional medical advice, diagnosis, or treatment.
                                                 Please consult a doctor.
@@ -142,14 +188,29 @@ const DiseasePrediction = () => {
                                 )}
                             </AnimatePresence>
 
+                            {/* Error Section */}
                             {error && (
-                                <div className="alert alert-danger mt-4 rounded-3 d-flex align-items-center gap-2">
-                                    <AlertTriangle size={18} /> {error}
-                                </div>
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="mt-4 p-4 rounded-3"
+                                    style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                                >
+                                    <div className="d-flex align-items-center gap-2 mb-3" style={{ color: '#dc2626' }}>
+                                        <AlertTriangle size={18} />
+                                        <span className="fw-bold">{error}</span>
+                                    </div>
+                                    <button
+                                        className="btn btn-sm rounded-pill fw-bold w-100 text-white"
+                                        style={{ background: 'linear-gradient(135deg, #1a3a4a 0%, #2d5a6e 100%)' }}
+                                        onClick={runDemoPrediction}
+                                    >
+                                        Run Simulation (Demo)
+                                    </button>
+                                </motion.div>
                             )}
-
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
         </div>

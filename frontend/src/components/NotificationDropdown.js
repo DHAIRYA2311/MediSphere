@@ -15,7 +15,7 @@ const NotificationDropdown = () => {
         if (!user) return;
         try {
             // Using the PHP listing API
-            const res = await fetch(`http://localhost:80/Medisphere-Project/backend/api/notifications/list.php?user_id=${user.user_id}&limit=10`);
+            const res = await fetch(`http://localhost:8080/MediSphere/backend/api/notifications/list.php?user_id=${user.user_id}&limit=10`);
             const data = await res.json();
 
             if (Array.isArray(data)) {
@@ -30,7 +30,7 @@ const NotificationDropdown = () => {
 
     const markAsRead = async (id) => {
         try {
-            await fetch('http://localhost:80/Medisphere-Project/backend/api/notifications/mark_read.php', {
+            await fetch('http://localhost:8080/MediSphere/backend/api/notifications/mark_read.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ notification_id: id })

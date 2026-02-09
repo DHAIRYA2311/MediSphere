@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8080/Medisphere-Project/backend/api";
+const API_URL = "http://localhost:8080/MediSphere/backend/api";
 
 export const api = {
     async post(endpoint, data) {
@@ -50,4 +50,4 @@ export const api = {
     }
 };
 
-export const BASE_URL = "http://localhost:8080/Medisphere-Project/backend";
+export const BASE_URL = "http://localhost:8080/MediSphere/backend";

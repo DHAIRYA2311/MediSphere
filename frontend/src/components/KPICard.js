@@ -1,52 +1,78 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import Skeleton from './Skeleton';
 
-const KPICard = ({ title, value, icon: Icon, trend, color, subtext, loading }) => {
-    const isPositive = trend > 0;
+const KPICard = ({ title, value, icon: Icon, trend, trendValue, color = 'primary' }) => {
+    const colorMap = {
+        primary: { bg: 'var(--accent)', shadow: 'rgba(94, 170, 181, 0.3)' },
+        success: { bg: 'var(--success)', shadow: 'rgba(16, 185, 129, 0.3)' },
+        warning: { bg: 'var(--warning)', shadow: 'rgba(245, 158, 11, 0.3)' },
+        info: { bg: 'var(--info)', shadow: 'rgba(59, 130, 246, 0.3)' },
+        accent: { bg: 'var(--primary)', shadow: 'rgba(26, 58, 74, 0.3)' }
+    };
+
+    const colors = colorMap[color] || colorMap.primary;
+    const isPositive = trend === 'up';
 
     return (
         <motion.div
-            whileHover={!loading ? { y: -5 } : {}}
-            className="card-enterprise border-0 shadow-sm p-4 h-100 position-relative overflow-hidden"
+            className="stat-card h-100"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            whileHover={{ y: -4 }}
         >
-            <div className="d-flex justify-content-between align-items-start">
+            {/* Header Row */}
+            <div className="d-flex justify-content-between align-items-start mb-3">
                 <div className="flex-grow-1">
-                    <p className="text-muted fw-bold text-uppercase small mb-2 tracking-wide">
-                        {loading ? <Skeleton className="skeleton-text" style={{ width: '60px' }} /> : title}
-                    </p>
-                    <h3 className="fw-bold mb-2 text-dark">
-                        {loading ? <Skeleton className="skeleton-title" style={{ width: '100px', height: '36px' }} /> : value}
-                    </h3>
-
-                    {loading ? (
-                        <Skeleton className="skeleton-text" style={{ width: '80%' }} />
-                    ) : (
-                        <>
-                            {trend && (
-                                <div className={`d-flex align-items-center small ${isPositive ? 'text-success' : 'text-danger'}`}>
-                                    {isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                                    <span className="fw-bold ms-1">{Math.abs(trend)}%</span>
-                                    <span className="text-muted ms-2 fw-normal">vs last month</span>
-                                </div>
-                            )}
-                            {subtext && <p className="text-muted small mb-0 mt-2">{subtext}</p>}
-                        </>
+                    <h6 className="mb-1 fw-semibold" style={{ color: 'var(--text-main)', fontSize: '0.9375rem' }}>
+                        {title}
+                    </h6>
+                    {trendValue && (
+                        <span
+                            className="badge rounded-pill d-inline-flex align-items-center gap-1"
+                            style={{
+                                background: isPositive ? 'var(--success-light)' : 'var(--danger-light)',
+                                color: isPositive ? 'var(--success)' : 'var(--danger)',
+                                border: `1px solid ${isPositive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                                fontSize: '0.75rem',
+                                padding: '0.25rem 0.625rem'
+                            }}
+                        >
+                            <span>{isPositive ? '↑' : '↓'}</span>
+                            <span>{trendValue}</span>
+                        </span>
                     )}
                 </div>
-
-                <div className={`rounded-3 p-3 d-flex align-items-center justify-content-center ${loading ? 'bg-light' : `bg-${color} bg-opacity-10 text-${color}`}`}>
-                    {loading ? <Skeleton className="skeleton-avatar" /> : <Icon size={24} />}
-                </div>
+                {Icon && (
+                    <div
+                        className="d-flex align-items-center justify-content-center rounded-xl"
+                        style={{
+                            width: 48,
+                            height: 48,
+                            background: colors.bg,
+                            boxShadow: `0 4px 12px ${colors.shadow}`,
+                            color: 'white'
+                        }}
+                    >
+                        <Icon size={22} />
+                    </div>
+                )}
             </div>
 
-            {!loading && (
-                <div
-                    className={`position-absolute rounded-circle bg-${color} opacity-10`}
-                    style={{ width: '100px', height: '100px', right: '-20px', bottom: '-20px', opacity: 0.05 }}
-                ></div>
-            )}
+            {/* Value */}
+            <div className="mt-2">
+                <span
+                    className="fw-bold"
+                    style={{
+                        fontSize: '2rem',
+                        color: 'var(--text-main)',
+                        letterSpacing: '-0.02em',
+                        lineHeight: 1.1
+                    }}
+                >
+                    {value}
+                </span>
+            </div>
         </motion.div>
     );
 };

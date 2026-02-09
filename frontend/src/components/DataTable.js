@@ -1,93 +1,102 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Search, Filter, MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileX } from 'lucide-react';
 
-const DataTable = ({ columns, data, searchable = true, title, keyField = 'id', actions }) => {
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-    const [searchTerm, setSearchTerm] = useState('');
+const DataTable = ({
+    columns,
+    data,
+    searchable = true,
+    pagination = true,
+    pageSize = 10,
+    onRowClick,
+    actions,
+    emptyMessage = "No data available"
+}) => {
+    const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
-    const rowsPerPage = 10;
 
-    // Sorting
-    const sortedData = useMemo(() => {
-        let sortableItems = [...data];
-        if (sortConfig.key) {
-            sortableItems.sort((a, b) => {
-                if (a[sortConfig.key] < b[sortConfig.key]) {
-                    return sortConfig.direction === 'asc' ? -1 : 1;
-                }
-                if (a[sortConfig.key] > b[sortConfig.key]) {
-                    return sortConfig.direction === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
+    // Filter data based on search
+    const filteredData = data.filter(row =>
+        columns.some(col => {
+            const value = col.accessor ? row[col.accessor] : '';
+            return String(value).toLowerCase().includes(search.toLowerCase());
+        })
+    );
+
+    // Paginate
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    const paginatedData = pagination
+        ? filteredData.slice((page - 1) * pageSize, page * pageSize)
+        : filteredData;
+
+    const renderPageNumbers = () => {
+        const pages = [];
+        const maxVisible = 5;
+        let start = Math.max(1, page - 2);
+        let end = Math.min(totalPages, start + maxVisible - 1);
+        if (end - start < maxVisible - 1) {
+            start = Math.max(1, end - maxVisible + 1);
         }
-        return sortableItems;
-    }, [data, sortConfig]);
 
-    // Filtering
-    const filteredData = useMemo(() => {
-        return sortedData.filter(item => {
-            return Object.values(item).some(val =>
-                String(val).toLowerCase().includes(searchTerm.toLowerCase())
+        for (let i = start; i <= end; i++) {
+            pages.push(
+                <button
+                    key={i}
+                    onClick={() => setPage(i)}
+                    className={`btn btn-sm ${page === i ? 'btn-primary' : 'btn-light'}`}
+                    style={{
+                        minWidth: 36,
+                        height: 36,
+                        borderRadius: 'var(--radius-lg)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem'
+                    }}
+                >
+                    {i}
+                </button>
             );
-        });
-    }, [sortedData, searchTerm]);
-
-    // Pagination
-    const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-    const paginatedData = filteredData.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-
-    const requestSort = (key) => {
-        let direction = 'asc';
-        if (sortConfig.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
         }
-        setSortConfig({ key, direction });
+        return pages;
     };
 
     return (
-        <div className="card-enterprise border-0 shadow-sm">
-            {/* Header */}
-            <div className="p-4 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-                <h5 className="fw-bold mb-0 text-dark">{title}</h5>
-
-                <div className="d-flex gap-2 w-100 w-md-auto">
-                    {searchable && (
-                        <div className="position-relative flex-grow-1">
-                            <Search size={16} className="position-absolute text-muted" style={{ top: '50%', transform: 'translateY(-50%)', left: '12px' }} />
-                            <input
-                                type="text"
-                                className="form-control bg-light border-0 ps-5"
-                                placeholder="Search..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    )}
-                    <button className="btn btn-light border-0 d-flex align-items-center gap-2">
-                        <Filter size={16} /> <span className="d-none d-sm-inline">Filter</span>
-                    </button>
+        <div className="fade-in">
+            {/* Search Bar */}
+            {searchable && (
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <div className="position-relative" style={{ width: '280px' }}>
+                        <Search
+                            size={16}
+                            className="position-absolute"
+                            style={{
+                                left: '14px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                color: 'var(--text-muted)'
+                            }}
+                        />
+                        <input
+                            type="search"
+                            className="search-bar"
+                            placeholder="Search records..."
+                            value={search}
+                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                            style={{ paddingLeft: '42px', width: '100%' }}
+                        />
+                    </div>
+                    <div className="text-muted-custom small">
+                        Showing {paginatedData.length} of {filteredData.length} records
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Table */}
             <div className="table-responsive">
                 <table className="table table-custom mb-0">
-                    <thead className="bg-light">
+                    <thead>
                         <tr>
-                            {columns.map((col) => (
-                                <th
-                                    key={col.key}
-                                    onClick={() => col.sortable && requestSort(col.key)}
-                                    style={{ cursor: col.sortable ? 'pointer' : 'default' }}
-                                    className="text-nowrap"
-                                >
-                                    <div className="d-flex align-items-center gap-1">
-                                        {col.label}
-                                        {col.sortable && sortConfig.key === col.key && (
-                                            sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                                        )}
-                                    </div>
+                            {columns.map((col, idx) => (
+                                <th key={idx} style={col.style || {}}>
+                                    {col.header}
                                 </th>
                             ))}
                             {actions && <th className="text-end">Actions</th>}
@@ -95,32 +104,45 @@ const DataTable = ({ columns, data, searchable = true, title, keyField = 'id', a
                     </thead>
                     <tbody>
                         {paginatedData.length > 0 ? (
-                            paginatedData.map((row, index) => (
-                                <tr key={row[keyField] || index} className="align-middle">
-                                    {columns.map((col) => (
-                                        <td key={`${row[keyField]}-${col.key}`}>
-                                            {col.render ? col.render(row) : row[col.key]}
+                            paginatedData.map((row, rowIdx) => (
+                                <tr
+                                    key={row.id || rowIdx}
+                                    onClick={() => onRowClick && onRowClick(row)}
+                                    style={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                                    className="hover-lift"
+                                >
+                                    {columns.map((col, colIdx) => (
+                                        <td key={colIdx} style={col.cellStyle || {}}>
+                                            {col.render
+                                                ? col.render(row)
+                                                : col.accessor
+                                                    ? row[col.accessor]
+                                                    : null}
                                         </td>
                                     ))}
                                     {actions && (
                                         <td className="text-end">
-                                            <div className="dropdown">
-                                                <button className="btn btn-link text-muted p-0" data-bs-toggle="dropdown">
-                                                    <MoreHorizontal size={20} />
-                                                </button>
-                                                <ul className="dropdown-menu dropdown-menu-end border-0 shadow">
-                                                    {actions.map((action, idx) => (
-                                                        <li key={idx}>
-                                                            <button
-                                                                className={`dropdown-item d-flex align-items-center gap-2 ${action.className || ''}`}
-                                                                onClick={() => action.onClick(row)}
-                                                            >
-                                                                {action.icon && <action.icon size={16} />}
-                                                                {action.label}
-                                                            </button>
-                                                        </li>
-                                                    ))}
-                                                </ul>
+                                            <div className="d-flex gap-2 justify-content-end">
+                                                {actions.map((action, i) => {
+                                                    const ActionIcon = action.icon;
+                                                    const className = typeof action.className === 'function' ? action.className(row) : action.className;
+                                                    if (className?.includes('d-none')) return null;
+
+                                                    return (
+                                                        <button
+                                                            key={i}
+                                                            className={`btn btn-sm btn-light ${className || 'text-muted'}`}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                action.onClick(row);
+                                                            }}
+                                                            title={action.label}
+                                                            style={{ width: 32, height: 32, padding: 0, borderRadius: '50%' }}
+                                                        >
+                                                            {ActionIcon && <ActionIcon size={16} />}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </td>
                                     )}
@@ -128,8 +150,26 @@ const DataTable = ({ columns, data, searchable = true, title, keyField = 'id', a
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={columns.length + (actions ? 1 : 0)} className="text-center py-5 text-muted">
-                                    No data found matching your search.
+                                <td colSpan={columns.length} className="text-center py-5">
+                                    <div className="d-flex flex-column align-items-center">
+                                        <div
+                                            className="d-flex align-items-center justify-content-center rounded-3 mb-3"
+                                            style={{
+                                                width: 64,
+                                                height: 64,
+                                                background: 'var(--bg-glass)',
+                                                border: '1px solid var(--border-dark)'
+                                            }}
+                                        >
+                                            <FileX size={28} style={{ color: 'var(--text-muted)' }} />
+                                        </div>
+                                        <h6 className="fw-semibold mb-1" style={{ color: 'var(--text-main)' }}>
+                                            No Records Found
+                                        </h6>
+                                        <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>
+                                            {emptyMessage}
+                                        </p>
+                                    </div>
                                 </td>
                             </tr>
                         )}
@@ -137,28 +177,51 @@ const DataTable = ({ columns, data, searchable = true, title, keyField = 'id', a
                 </table>
             </div>
 
-            {/* Footer / Pagination */}
-            <div className="p-3 border-top d-flex justify-content-between align-items-center">
-                <small className="text-muted">
-                    Showing {Math.min((page - 1) * rowsPerPage + 1, filteredData.length)} to {Math.min(page * rowsPerPage, filteredData.length)} of {filteredData.length} entries
-                </small>
-                <div className="btn-group">
-                    <button
-                        className="btn btn-outline-light text-dark border"
-                        disabled={page === 1}
-                        onClick={() => setPage(p => p - 1)}
-                    >
-                        Previous
-                    </button>
-                    <button
-                        className="btn btn-outline-light text-dark border"
-                        disabled={page === totalPages}
-                        onClick={() => setPage(p => p + 1)}
-                    >
-                        Next
-                    </button>
+            {/* Pagination */}
+            {pagination && totalPages > 1 && (
+                <div className="d-flex justify-content-between align-items-center mt-4 pt-3" style={{ borderTop: '1px solid var(--border-dark)' }}>
+                    <div className="small" style={{ color: 'var(--text-muted)' }}>
+                        Page {page} of {totalPages}
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                        <button
+                            onClick={() => setPage(1)}
+                            disabled={page === 1}
+                            className="btn btn-light btn-sm"
+                            style={{ width: 36, height: 36, borderRadius: 'var(--radius-lg)' }}
+                        >
+                            <ChevronsLeft size={16} />
+                        </button>
+                        <button
+                            onClick={() => setPage(Math.max(1, page - 1))}
+                            disabled={page === 1}
+                            className="btn btn-light btn-sm"
+                            style={{ width: 36, height: 36, borderRadius: 'var(--radius-lg)' }}
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+
+                        {renderPageNumbers()}
+
+                        <button
+                            onClick={() => setPage(Math.min(totalPages, page + 1))}
+                            disabled={page === totalPages}
+                            className="btn btn-light btn-sm"
+                            style={{ width: 36, height: 36, borderRadius: 'var(--radius-lg)' }}
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                        <button
+                            onClick={() => setPage(totalPages)}
+                            disabled={page === totalPages}
+                            className="btn btn-light btn-sm"
+                            style={{ width: 36, height: 36, borderRadius: 'var(--radius-lg)' }}
+                        >
+                            <ChevronsRight size={16} />
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

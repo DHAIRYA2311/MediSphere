@@ -1,19 +1,203 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, Activity, Wand2, CheckCircle, ShieldCheck } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Activity, ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { api } from '../services/api';
+import Particles from 'react-tsparticles';
+import { loadSlim } from 'tsparticles-slim';
+
+// Particles.js Background - Teal theme
+const ParticleBackground = () => {
+    const particlesInit = useCallback(async (engine) => {
+        await loadSlim(engine);
+    }, []);
+
+    return (
+        <Particles
+            id="login-particles"
+            init={particlesInit}
+            options={{
+                background: { color: { value: "transparent" } },
+                fpsLimit: 60,
+                interactivity: {
+                    events: {
+                        onHover: { enable: true, mode: "grab" },
+                        onClick: { enable: true, mode: "push" },
+                        resize: true
+                    },
+                    modes: {
+                        grab: { distance: 140, links: { opacity: 1 } },
+                        push: { quantity: 0.01 }
+                    }
+                },
+                particles: {
+                    color: { value: "#5eaab5" },
+                    links: { color: "#5eaab5", distance: 150, enable: true, opacity: 0.2, width: 1 },
+                    move: { direction: "none", enable: true, outModes: { default: "out" }, random: false, speed: 0.8, straight: false },
+                    number: { density: { enable: true, area: 800 }, value: 50 },
+                    opacity: { value: 0.3 },
+                    shape: { type: "circle" },
+                    size: { value: { min: 1, max: 4 } }
+                },
+                detectRetina: true
+            }}
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}
+        />
+    );
+};
+
+// Interactive Hero Particles - for dark hero section
+const HeroParticles = () => {
+    const particlesInit = useCallback(async (engine) => {
+        await loadSlim(engine);
+    }, []);
+
+    return (
+        <Particles
+            id="hero-particles"
+            init={particlesInit}
+            options={{
+                background: { color: { value: "transparent" } },
+                fpsLimit: 60,
+                interactivity: {
+                    events: {
+                        onHover: { enable: true, mode: "repulse" },
+                        onClick: { enable: true, mode: "push" },
+                        resize: true
+                    },
+                    modes: {
+                        repulse: { distance: 100, duration: 0.4 },
+                        push: { quantity: 1 }
+                    }
+                },
+                particles: {
+                    color: { value: ["#5eaab5", "#7fc4ce", "#a5f3fc"] },
+                    links: { color: "#5eaab5", distance: 120, enable: true, opacity: 0.3, width: 1 },
+                    move: {
+                        direction: "none",
+                        enable: true,
+                        outModes: { default: "bounce" },
+                        random: true,
+                        speed: 1.5,
+                        straight: false,
+                        attract: { enable: true, rotateX: 600, rotateY: 1200 }
+                    },
+                    number: { density: { enable: true, area: 600 }, value: 40 },
+                    opacity: { value: { min: 0.3, max: 0.7 }, animation: { enable: true, speed: 1, minimumValue: 0.1 } },
+                    shape: { type: "circle" },
+                    size: { value: { min: 1, max: 5 } }
+                },
+                detectRetina: true
+            }}
+            style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 1,
+                borderRadius: '24px'
+            }}
+        />
+    );
+};
+
+// Runaway Icon Component - Flees from mouse cursor
+const RunawayIcon = ({ emoji, size, initialPosition, baseAnimation }) => {
+    const iconRef = useRef(null);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isRunning, setIsRunning] = useState(false);
+
+    const handleMouseMove = useCallback((e) => {
+        if (!iconRef.current) return;
+
+        const iconRect = iconRef.current.getBoundingClientRect();
+        const iconCenterX = iconRect.left + iconRect.width / 2;
+        const iconCenterY = iconRect.top + iconRect.height / 2;
+
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+
+        const distanceX = mouseX - iconCenterX;
+        const distanceY = mouseY - iconCenterY;
+        const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+        // If mouse is within 150px, run away!
+        if (distance < 150) {
+            setIsRunning(true);
+            // Calculate escape direction (opposite of mouse)
+            const escapeX = -distanceX * (150 / distance) * 0.8;
+            const escapeY = -distanceY * (150 / distance) * 0.8;
+
+            // Clamp to prevent going too far
+            const clampedX = Math.max(-100, Math.min(100, escapeX));
+            const clampedY = Math.max(-80, Math.min(80, escapeY));
+
+            setPosition({ x: clampedX, y: clampedY });
+        } else {
+            setIsRunning(false);
+            // Slowly return to original position
+            setPosition(prev => ({
+                x: prev.x * 0.95,
+                y: prev.y * 0.95
+            }));
+        }
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, [handleMouseMove]);
+
+    return (
+        <div className="position-absolute" style={initialPosition}>
+            <motion.div
+                ref={iconRef}
+                animate={{
+                    x: position.x,
+                    y: position.y + (baseAnimation?.y || 0),
+                    rotate: isRunning ? [0, -15, 15, -10, 10, 0] : (baseAnimation?.rotate || 0),
+                    scale: isRunning ? 1.2 : 1
+                }}
+                transition={{
+                    x: { type: "spring", stiffness: 300, damping: 20 },
+                    y: { type: "spring", stiffness: 300, damping: 20 },
+                    rotate: { duration: 0.3 },
+                    scale: { duration: 0.2 }
+                }}
+                style={{
+                    width: `${size}px`,
+                    height: `${size}px`,
+                    background: 'rgba(94, 170, 181, 0.1)',
+                    borderRadius: size > 45 ? '12px' : '50%',
+                    border: '1px solid rgba(94, 170, 181, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(10px)'
+                }}
+            >
+                <span style={{ fontSize: `${size * 0.5}px` }}>{emoji}</span>
+            </motion.div>
+        </div>
+    );
+};
+
 
 const Login = () => {
-    const [loginMethod, setLoginMethod] = useState('password'); // 'password' | 'magic'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
-    const [magicLinkSent, setMagicLinkSent] = useState(false);
     const [loading, setLoading] = useState(false);
-
+    const [magicLinkMode, setMagicLinkMode] = useState(false);
+    const [magicLinkSent, setMagicLinkSent] = useState(false);
     const { login, user } = useAuth();
     const navigate = useNavigate();
+
+
 
     useEffect(() => {
         if (user) {
@@ -27,230 +211,370 @@ const Login = () => {
         setLoading(true);
 
         try {
-            if (loginMethod === 'password') {
-                const res = await login(email, password);
-                if (res.success) {
-                    navigate('/dashboard');
-                } else {
-                    setError(res.message);
-                }
+            const res = await login(email, password);
+            if (res.status === 'success') {
+                navigate('/dashboard');
             } else {
-                // Connection Test (GET)
-                try {
-                    const testRes = await fetch('http://127.0.0.1:8080/Medisphere-Project/backend/api/auth/test_get.php');
-                    if (!testRes.ok) throw new Error("Test GET failed");
-                    console.log("Connection Test OK");
-
-                    // Real Call
-                    const response = await fetch('http://127.0.0.1:8080/Medisphere-Project/backend/api/auth/send_magic_link.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email })
-                    });
-
-                    const text = await response.text();
-                    try {
-                        const data = JSON.parse(text);
-                        if (data.success) {
-                            setMagicLinkSent(true);
-                            console.log("MAGIC LINK:", data.debug_link);
-                        } else {
-                            setError(data.message || "Failed to send magic link.");
-                        }
-                    } catch (e) {
-                        console.error("Server Error:", text);
-                        setError("Server Error: " + text.substring(0, 50));
-                    }
-
-                } catch (e) {
-                    console.error(e);
-                    setError("Network Error: Cannot connect to backend. " + e.message);
-                }
+                setError(res.message || 'Invalid credentials');
             }
         } catch (err) {
-            console.error("Critical Error", err);
-            setError("Error: " + err.message);
+            setError('Connection error. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    return (
-        <div className="container-fluid min-vh-100 d-flex p-0 bg-white overflow-hidden">
-            {/* Left Side - Hero Image */}
-            <div className="d-none d-lg-flex col-lg-6 bg-light position-relative p-0 align-items-center justify-content-center overflow-hidden">
-                <div className="position-absolute w-100 h-100" style={{ left: 0, top: 0 }}>
-                    <img
-                        src="/assets/images/login-hero.png"
-                        alt="Medical Background"
-                        className="w-100 h-100 object-fit-cover"
-                        style={{ filter: 'brightness(0.9)' }}
-                    />
-                    {/* Overlay */}
-                    <div className="position-absolute w-100 h-100 bg-primary bg-opacity-25" style={{ left: 0, top: 0, mixBlendMode: 'overlay' }}></div>
-                    <div className="position-absolute w-100 h-100" style={{ background: 'linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%)', left: 0, top: 0 }}></div>
-                </div>
+    const handleMagicLink = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            const data = await api.post('auth/send_magic_link.php', { email });
+            if (data.status === 'success') {
+                setMagicLinkSent(true);
+            } else {
+                setError(data.message);
+            }
+        } catch (err) {
+            setError('Could not send magic link.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-                <div className="position-relative z-1 p-5 text-end pe-5 me-5 fade-in-up">
-                    <div className="d-inline-block p-3 rounded-circle bg-white bg-opacity-25 backdrop-blur shadow-lg mb-4">
-                        <Activity size={48} className="text-primary" />
+
+
+    return (
+        <div className="min-vh-100 d-flex" style={{
+            background: 'linear-gradient(180deg, rgba(94, 170, 181, 0.15) 0%, #f8fafc 100%)',
+            position: 'relative'
+        }}>
+            {/* Particle Background */}
+            <ParticleBackground />
+
+            {/* Left Side - Glassmorphism Form */}
+            <div className="col-12 col-lg-5 d-flex flex-column p-4 p-lg-5" style={{ position: 'relative', zIndex: 1 }}>
+                <div
+                    className="h-100 d-flex flex-column p-4 p-lg-5"
+                    style={{
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+                    }}
+                >
+                    {/* Logo */}
+                    <div className="mb-4">
+                        <Link to="/" className="d-inline-flex align-items-center gap-2 text-decoration-none">
+                            <div
+                                className="d-flex align-items-center justify-content-center rounded-3"
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    background: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)',
+                                    boxShadow: '0 4px 12px rgba(13, 148, 136, 0.3)'
+                                }}
+                            >
+                                <Activity size={24} className="text-white" />
+                            </div>
+                            <span className="h5 fw-bold mb-0" style={{ color: '#0d9488' }}>MediSphere</span>
+                        </Link>
                     </div>
-                    <h1 className="display-4 fw-bold text-dark mb-3 tracking-tight">Medisphere<br />Enterprise</h1>
-                    <p className="lead text-secondary mb-4 opacity-75 fw-medium">
-                        Next-Generation Hospital Management<br />& AI Diagnostics System
-                    </p>
-                    <div className="d-flex justify-content-end gap-3">
-                        <div className="d-flex align-items-center gap-2 bg-white bg-opacity-50 px-3 py-2 rounded-pill shadow-sm">
-                            <ShieldCheck size={18} className="text-success" />
-                            <span className="small fw-bold text-dark">HIPAA Compliant</span>
-                        </div>
+
+                    {/* Form Content */}
+                    <div className="flex-grow-1 d-flex flex-column justify-content-center" style={{ maxWidth: '380px' }}>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                        >
+                            <div className="d-flex align-items-center gap-2 mb-2">
+                                <h1 className="display-6 fw-bold mb-0" style={{ color: '#1a3a4a' }}>
+                                    Welcome Back!
+                                </h1>
+                                <Sparkles size={24} style={{ color: '#14b8a6' }} />
+                            </div>
+                            <p className="mb-4" style={{ color: '#4a6572', fontSize: '0.9375rem' }}>
+                                Please enter log in details below
+                            </p>
+
+                            {magicLinkSent ? (
+                                <div
+                                    className="text-center py-4 px-3"
+                                    style={{
+                                        background: 'rgba(16, 185, 129, 0.1)',
+                                        borderRadius: '16px',
+                                        border: '1px solid rgba(16, 185, 129, 0.2)'
+                                    }}
+                                >
+                                    <div className="d-inline-flex align-items-center justify-content-center rounded-3 mb-3"
+                                        style={{ width: 64, height: 64, background: 'rgba(16, 185, 129, 0.15)' }}>
+                                        <Mail size={28} style={{ color: '#10b981' }} />
+                                    </div>
+                                    <h5 className="fw-bold" style={{ color: '#1a3a4a' }}>Check Your Email</h5>
+                                    <p style={{ color: '#4a6572' }}>
+                                        We've sent a magic login link to <strong>{email}</strong>
+                                    </p>
+                                    <button
+                                        className="btn btn-light mt-3"
+                                        onClick={() => { setMagicLinkSent(false); setMagicLinkMode(false); }}
+                                        style={{ borderRadius: '12px' }}
+                                    >
+                                        Back to Login
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={magicLinkMode ? handleMagicLink : handleSubmit}>
+                                    {error && (
+                                        <div
+                                            className="d-flex align-items-center gap-2 py-3 px-3 mb-4"
+                                            style={{
+                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                borderRadius: '12px',
+                                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                color: '#dc2626'
+                                            }}
+                                        >
+                                            <Activity size={18} />
+                                            <span className="small fw-medium">{error}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Email Field */}
+                                    <div className="mb-3">
+                                        <label className="form-label small fw-semibold" style={{ color: '#1a3a4a' }}>EMAIL</label>
+                                        <input
+                                            type="email"
+                                            className="form-control form-control-lg"
+                                            placeholder="you@example.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            required
+                                            style={{
+                                                background: 'rgba(255, 255, 255, 0.6)',
+                                                border: '1px solid rgba(255, 255, 255, 0.8)',
+                                                borderRadius: '12px',
+                                                padding: '14px 16px',
+                                                fontSize: '0.9375rem',
+                                                color: '#1a3a4a',
+                                                backdropFilter: 'blur(10px)'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Password Field */}
+                                    {!magicLinkMode && (
+                                        <div className="mb-3">
+                                            <label className="form-label small fw-semibold" style={{ color: '#1a3a4a' }}>PASSWORD</label>
+                                            <div className="position-relative">
+                                                <input
+                                                    type={showPassword ? 'text' : 'password'}
+                                                    className="form-control form-control-lg"
+                                                    placeholder="Enter your password"
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    required
+                                                    style={{
+                                                        background: 'rgba(255, 255, 255, 0.6)',
+                                                        border: '1px solid rgba(255, 255, 255, 0.8)',
+                                                        borderRadius: '12px',
+                                                        padding: '14px 16px',
+                                                        paddingRight: '50px',
+                                                        fontSize: '0.9375rem',
+                                                        color: '#1a3a4a',
+                                                        backdropFilter: 'blur(10px)'
+                                                    }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="btn position-absolute border-0"
+                                                    style={{ right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'transparent' }}
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                >
+                                                    {showPassword ? <EyeOff size={20} color="#4a6572" /> : <Eye size={20} color="#4a6572" />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Forgot Password */}
+                                    {!magicLinkMode && (
+                                        <div className="text-end mb-4">
+                                            <Link to="/forgot-password" className="text-decoration-none small fw-medium" style={{ color: '#4a6572' }}>
+                                                Forget password?
+                                            </Link>
+                                        </div>
+                                    )}
+
+                                    {/* Submit Button */}
+                                    <button
+                                        type="submit"
+                                        className="btn w-100 py-3 fw-semibold d-flex align-items-center justify-content-center gap-2"
+                                        disabled={loading}
+                                        style={{
+                                            background: 'linear-gradient(135deg, #1a3a4a 0%, #2d5a6e 100%)',
+                                            color: '#fff',
+                                            borderRadius: '12px',
+                                            fontSize: '1rem',
+                                            border: 'none',
+                                            boxShadow: '0 4px 14px rgba(26, 58, 74, 0.3)'
+                                        }}
+                                    >
+                                        {loading ? (
+                                            <span className="spinner-border spinner-border-sm" />
+                                        ) : (
+                                            <>
+                                                {magicLinkMode ? 'Send Magic Link' : 'Sign in'}
+                                                <ArrowRight size={18} />
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* Divider */}
+                                    <div className="d-flex align-items-center my-4">
+                                        <hr className="flex-grow-1" style={{ borderColor: 'rgba(74, 101, 114, 0.2)' }} />
+                                        <span className="px-3 small" style={{ color: '#4a6572' }}>or continue</span>
+                                        <hr className="flex-grow-1" style={{ borderColor: 'rgba(74, 101, 114, 0.2)' }} />
+                                    </div>
+
+                                    {/* Magic Link / Password Toggle */}
+                                    <button
+                                        type="button"
+                                        className="btn w-100 py-3 fw-medium d-flex align-items-center justify-content-center gap-2"
+                                        style={{
+                                            borderRadius: '12px',
+                                            border: '1px solid rgba(255, 255, 255, 0.8)',
+                                            background: 'rgba(255, 255, 255, 0.4)',
+                                            color: '#1a3a4a'
+                                        }}
+                                        onClick={() => setMagicLinkMode(!magicLinkMode)}
+                                    >
+                                        <Mail size={20} />
+                                        {magicLinkMode ? 'Use password instead' : 'Login with Magic Link'}
+                                    </button>
+                                </form>
+                            )}
+
+                            {/* Sign Up Link */}
+                            <p className="text-center mt-4 mb-0" style={{ color: '#4a6572' }}>
+                                Don't have an account?{' '}
+                                <Link to="/register" className="fw-semibold text-decoration-none" style={{ color: '#1a3a4a' }}>
+                                    Sign Up
+                                </Link>
+                            </p>
+                        </motion.div>
                     </div>
                 </div>
             </div>
 
-            {/* Right Side - Login Form */}
-            <div className="col-12 col-lg-6 d-flex flex-column align-items-center justify-content-center p-5 position-relative">
+            {/* Right Side - Dark Navy Hero */}
+            <div className="d-none d-lg-flex col-lg-7 p-4">
+                <div
+                    className="w-100 h-100 position-relative overflow-hidden d-flex flex-column justify-content-center"
+                    style={{
+                        borderRadius: '24px',
+                        background: 'linear-gradient(135deg, #050a0c 0%, #0d1f26 40%, #132a33 70%, #0a1a20 100%)'
+                    }}
+                >
+                    {/* Interactive Particles */}
+                    <HeroParticles />
 
-                {/* Mobile Header */}
-                <div className="d-lg-none text-center mb-5">
-                    <span className="d-flex align-items-center justify-content-center gap-2 mb-2">
-                        <Activity size={32} className="text-primary" />
-                        <span className="h3 fw-bold m-0">Medisphere</span>
-                    </span>
-                </div>
+                    {/* Grid Pattern */}
+                    <div
+                        className="position-absolute w-100 h-100"
+                        style={{
+                            backgroundImage: `
+                                linear-gradient(rgba(94, 170, 181, 0.04) 1px, transparent 1px),
+                                linear-gradient(90deg, rgba(94, 170, 181, 0.04) 1px, transparent 1px)
+                            `,
+                            backgroundSize: '40px 40px',
+                            zIndex: 0
+                        }}
+                    />
 
-                <div className="w-100" style={{ maxWidth: '420px' }}>
-                    <div className="mb-4">
-                        <h2 className="fw-bold text-dark mb-2">Welcome Back</h2>
-                        <p className="text-muted">Please sign in to your account</p>
+                    {/* Glowing Orbs */}
+                    <div className="position-absolute" style={{ top: '20%', right: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(94, 170, 181, 0.15) 0%, transparent 70%)', zIndex: 0 }} />
+                    <div className="position-absolute" style={{ bottom: '30%', left: '10%', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(26, 58, 74, 0.2) 0%, transparent 70%)', zIndex: 0 }} />
+
+                    {/* Runaway Icons */}
+                    <div className="position-absolute w-100 h-100" style={{ zIndex: 1, pointerEvents: 'auto' }}>
+                        <RunawayIcon emoji="🏥" size={55} initialPosition={{ top: '8%', left: '8%' }} />
+                        <RunawayIcon emoji="💊" size={45} initialPosition={{ top: '12%', left: '45%' }} />
+                        <RunawayIcon emoji="🩺" size={42} initialPosition={{ top: '10%', right: '12%' }} />
+                        <RunawayIcon emoji="❤️" size={40} initialPosition={{ top: '45%', left: '6%' }} />
+                        <RunawayIcon emoji="💉" size={42} initialPosition={{ bottom: '15%', left: '12%' }} />
+                        <RunawayIcon emoji="🧬" size={38} initialPosition={{ bottom: '18%', left: '48%' }} />
+                        <RunawayIcon emoji="🌡️" size={40} initialPosition={{ bottom: '12%', right: '10%' }} />
                     </div>
 
-                    {/* Method Toggle */}
-                    <div className="d-flex bg-light p-1 rounded-3 mb-4 border">
-                        <button
-                            className={`flex-grow-1 btn btn-sm fw-bold rounded-2 transition-all ${loginMethod === 'password' ? 'bg-white shadow-sm text-primary' : 'text-muted'}`}
-                            onClick={() => { setLoginMethod('password'); setMagicLinkSent(false); setError(''); }}
+                    {/* Content */}
+                    <div className="position-relative px-5 py-4" style={{ zIndex: 3 }}>
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, delay: 0.2 }}
                         >
-                            <Lock size={14} className="me-2 mb-1" /> Password
-                        </button>
-                        <button
-                            className={`flex-grow-1 btn btn-sm fw-bold rounded-2 transition-all ${loginMethod === 'magic' ? 'bg-white shadow-sm text-primary' : 'text-muted'}`}
-                            onClick={() => { setLoginMethod('magic'); setError(''); }}
-                        >
-                            <Wand2 size={14} className="me-2 mb-1" /> Magic Link
-                        </button>
-                    </div>
-
-                    <AnimatePresence mode='wait'>
-                        {/* Success State for Magic Link */}
-                        {magicLinkSent ? (
+                            {/* Badge */}
                             <motion.div
-                                key="success"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-center p-5 bg-success bg-opacity-10 rounded-4 border border-success border-opacity-25"
+                                className="d-inline-flex align-items-center gap-2 px-3 py-2 mb-4"
+                                whileHover={{ scale: 1.05 }}
+                                style={{
+                                    background: 'rgba(94, 170, 181, 0.15)',
+                                    borderRadius: '50px',
+                                    border: '1px solid rgba(94, 170, 181, 0.25)',
+                                    cursor: 'pointer'
+                                }}
                             >
-                                <div className="mb-3 d-inline-flex bg-white rounded-circle p-3 shadow-sm">
-                                    <Mail size={32} className="text-success" />
-                                </div>
-                                <h4 className="fw-bold text-success mb-2">Check your inbox!</h4>
-                                <p className="text-muted small mb-4">
-                                    We sent a secure magic link to <strong>{email}</strong>.<br />
-                                    Click the link to sign in instantly.
-                                </p>
-                                <button
-                                    className="btn btn-outline-secondary btn-sm"
-                                    onClick={() => setMagicLinkSent(false)}
-                                >
-                                    Try distinct email
-                                </button>
+                                <motion.div
+                                    animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    style={{ width: '8px', height: '8px', background: '#5eaab5', borderRadius: '50%' }}
+                                />
+                                <span style={{ color: '#5eaab5', fontSize: '0.85rem', fontWeight: 500 }}>Healthcare Excellence</span>
                             </motion.div>
-                        ) : (
-                            <motion.form
-                                key="form"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onSubmit={handleSubmit}
+
+                            {/* Main Headline */}
+                            <motion.h1
+                                className="fw-bold mb-3"
+                                style={{ color: '#ffffff', fontSize: '3rem', lineHeight: 1.1 }}
+                                whileHover={{ x: 5 }}
+                                transition={{ type: "spring", stiffness: 300 }}
                             >
-                                {error && (
-                                    <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small rounded-3 mb-4">
-                                        <div className="flex-shrink-0"><Activity size={16} /></div>
-                                        <div>{error}</div>
-                                    </div>
-                                )}
-
-                                <div className="mb-3">
-                                    <label className="form-label small fw-bold text-uppercase text-secondary">Email</label>
-                                    <div className="input-group">
-                                        <span className="input-group-text bg-light border-end-0 text-muted ps-3"><Mail size={18} /></span>
-                                        <input
-                                            type="email"
-                                            className="form-control form-control-lg bg-light border-start-0 ps-2 fs-6"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            placeholder="doctor@medisphere.com"
-                                            required
-                                            style={{ minHeight: '52px' }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {loginMethod === 'password' && (
-                                    <motion.div
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        className="mb-4"
-                                    >
-                                        <div className="d-flex justify-content-between align-items-center mb-1">
-                                            <label className="form-label small fw-bold text-uppercase text-secondary mb-0">Password</label>
-                                            <Link to="/forgot-password" className="small text-primary text-decoration-none fw-bold">Forgot?</Link>
-                                        </div>
-                                        <div className="input-group">
-                                            <span className="input-group-text bg-light border-end-0 text-muted ps-3"><Lock size={18} /></span>
-                                            <input
-                                                type="password"
-                                                className="form-control form-control-lg bg-light border-start-0 ps-2 fs-6"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                placeholder="••••••••"
-                                                required
-                                                style={{ minHeight: '52px' }}
-                                            />
-                                        </div>
-                                    </motion.div>
-                                )}
-
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary btn-lg w-100 py-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 mt-4"
-                                    disabled={loading}
+                                Your Health,<br />
+                                <motion.span
+                                    style={{ color: '#5eaab5', display: 'inline-block' }}
+                                    whileHover={{ scale: 1.02, textShadow: '0 0 20px rgba(94, 170, 181, 0.5)' }}
                                 >
-                                    {loading ? (
-                                        <span className="spinner-border spinner-border-sm" />
-                                    ) : (
-                                        <>
-                                            {loginMethod === 'password' ? 'Sign In' : 'Send Magic Link'}
-                                            <ArrowRight size={18} />
-                                        </>
-                                    )}
-                                </button>
-                            </motion.form>
-                        )}
-                    </AnimatePresence>
+                                    Our Priority
+                                </motion.span>
+                            </motion.h1>
 
-                    {!magicLinkSent && (
-                        <div className="text-center mt-5">
-                            <p className="text-muted small">
-                                Don't have an account? <Link to="/register" className="fw-bold text-primary text-decoration-none hover-underline">Create Account</Link>
+                            {/* Subtext */}
+                            <p className="mb-4" style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '1.1rem', maxWidth: '400px', lineHeight: 1.6 }}>
+                                Experience seamless healthcare management with AI-powered insights, real-time monitoring, and expert care.
                             </p>
-                        </div>
-                    )}
-                </div>
 
-                {/* Footer Copyright */}
-                <div className="position-absolute bottom-0 w-100 text-center p-4">
-                    <small className="text-muted opacity-50">© 2026 Medisphere Inc. Privacy & Terms</small>
+                            {/* Stats */}
+                            <div className="d-flex gap-4 mt-5">
+                                <motion.div whileHover={{ scale: 1.1, y: -5 }} style={{ cursor: 'pointer' }}>
+                                    <motion.div className="fw-bold" style={{ color: '#5eaab5', fontSize: '2rem' }} whileHover={{ textShadow: '0 0 15px rgba(94, 170, 181, 0.6)' }}>500+</motion.div>
+                                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Expert Doctors</div>
+                                </motion.div>
+                                <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                                <motion.div whileHover={{ scale: 1.1, y: -5 }} style={{ cursor: 'pointer' }}>
+                                    <motion.div className="fw-bold" style={{ color: '#5eaab5', fontSize: '2rem' }} whileHover={{ textShadow: '0 0 15px rgba(94, 170, 181, 0.6)' }}>50K+</motion.div>
+                                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Happy Patients</div>
+                                </motion.div>
+                                <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                                <motion.div whileHover={{ scale: 1.1, y: -5 }} style={{ cursor: 'pointer' }}>
+                                    <motion.div className="fw-bold" style={{ color: '#5eaab5', fontSize: '2rem' }} whileHover={{ textShadow: '0 0 15px rgba(94, 170, 181, 0.6)' }}>24/7</motion.div>
+                                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Support</div>
+                                </motion.div>
+                            </div>
+                        </motion.div>
+                    </div>
                 </div>
             </div>
         </div>

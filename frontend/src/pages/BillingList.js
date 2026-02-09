@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import DataTable from '../components/DataTable';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Download, Plus, FileText, DollarSign, Calendar, CheckCircle, CreditCard, ShieldCheck } from 'lucide-react';
+import { Download, Plus, FileText, DollarSign, Calendar, CheckCircle, CreditCard, ShieldCheck, TrendingUp, Clock, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '../components/Skeleton';
 
@@ -88,8 +88,8 @@ const BillingList = () => {
     const generatePDF = (bill) => {
         const doc = new jsPDF();
         doc.setFontSize(22);
-        doc.setTextColor(37, 99, 235); // Primary Blue
-        doc.text("Medisphere SHMS", 105, 20, null, null, "center");
+        doc.setTextColor(26, 58, 74);
+        doc.text("MediSphere Healthcare", 105, 20, null, null, "center");
 
         doc.setFontSize(16);
         doc.setTextColor(0, 0, 0);
@@ -107,30 +107,44 @@ const BillingList = () => {
             head: [['Description', 'Amount']],
             body: [
                 ['Status', bill.payment_status],
-                ['Total Amount', `$${bill.total_amount}`],
-                ['Paid Amount', `$${bill.paid_amount}`],
-                ['Due Amount', `$${bill.total_amount - bill.paid_amount}`],
+                ['Total Amount', `₹${bill.total_amount}`],
+                ['Paid Amount', `₹${bill.paid_amount}`],
+                ['Due Amount', `₹${bill.total_amount - bill.paid_amount}`],
             ],
             theme: 'grid',
-            headStyles: { fillColor: [37, 99, 235] }
+            headStyles: { fillColor: [26, 58, 74] }
         });
 
-        doc.text("Thank you for choosing Medisphere!", 105, doc.lastAutoTable.finalY + 20, null, null, "center");
+        doc.text("Thank you for choosing MediSphere!", 105, doc.lastAutoTable.finalY + 20, null, null, "center");
         doc.save(`Bill_${bill.bill_id}.pdf`);
     };
+
+    // Calculate stats
+    const totalRevenue = bills.reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
+    const collectedAmount = bills.reduce((sum, b) => sum + parseFloat(b.paid_amount || 0), 0);
+    const pendingBills = bills.filter(b => b.payment_status === 'Pending').length;
+    const paidBills = bills.filter(b => b.payment_status === 'Paid').length;
 
     const columns = [
         {
             key: 'bill_id',
             label: 'ID',
-            render: (row) => <span className="text-secondary fw-mono">#{row.bill_id}</span>
+            render: (row) => <span className="small fw-mono" style={{ color: 'var(--text-muted)' }}>#{row.bill_id}</span>
         },
         {
             key: 'first_name',
             label: 'Patient',
             sortable: true,
             render: (row) => (
-                <div className="fw-semibold text-dark">{row.first_name} {row.last_name}</div>
+                <div className="d-flex align-items-center gap-2">
+                    <div className="avatar avatar-primary" style={{ width: 36, height: 36, fontSize: '0.75rem' }}>
+                        {row.first_name?.charAt(0)}{row.last_name?.charAt(0)}
+                    </div>
+                    <div>
+                        <div className="fw-semibold" style={{ color: 'var(--text-main)' }}>{row.first_name} {row.last_name}</div>
+                        <div className="small" style={{ color: 'var(--text-muted)' }}>{row.email}</div>
+                    </div>
+                </div>
             )
         },
         {
@@ -138,7 +152,7 @@ const BillingList = () => {
             label: 'Date',
             sortable: true,
             render: (row) => (
-                <div className="d-flex align-items-center gap-2 text-muted small">
+                <div className="d-flex align-items-center gap-2 small" style={{ color: 'var(--text-muted)' }}>
                     <Calendar size={14} /> {row.payment_date}
                 </div>
             )
@@ -149,8 +163,8 @@ const BillingList = () => {
             sortable: true,
             render: (row) => (
                 <div>
-                    <div className="fw-bold text-dark">${row.total_amount}</div>
-                    <div className="small text-success">Paid: ${row.paid_amount}</div>
+                    <div className="fw-bold" style={{ color: 'var(--text-main)' }}>₹{row.total_amount}</div>
+                    <div className="small" style={{ color: 'var(--success)' }}>Paid: ₹{row.paid_amount}</div>
                 </div>
             )
         },
@@ -159,10 +173,9 @@ const BillingList = () => {
             label: 'Status',
             sortable: true,
             render: (row) => (
-                <span className={`badge ${row.payment_status === 'Paid' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' :
-                    row.payment_status === 'Pending' ? 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25' :
-                        'bg-secondary bg-opacity-10 text-secondary'
-                    } rounded-pill px-3 py-1`}>
+                <span className={`badge ${row.payment_status === 'Paid' ? 'badge-success' :
+                    row.payment_status === 'Pending' ? 'badge-warning' : 'badge-info'
+                    }`}>
                     {row.payment_status}
                 </span>
             )
@@ -175,7 +188,7 @@ const BillingList = () => {
                     <span className={`small d-flex align-items-center gap-1 ${row.claim_status === 'Approved' ? 'text-success' : 'text-warning'}`}>
                         <ShieldCheck size={14} /> {row.claim_status}
                     </span>
-                ) : <span className="text-muted small">None</span>
+                ) : <span style={{ color: 'var(--text-muted)' }} className="small">None</span>
             )
         }
     ];
@@ -192,17 +205,96 @@ const BillingList = () => {
     ];
 
     return (
-        <div className="container-fluid py-4 fade-in">
-            <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="fade-in">
+            {/* Header */}
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
                 <div>
-                    <h2 className="fw-bold text-dark">Billing & Invoices</h2>
-                    <p className="text-muted">Track payments and generate invoices</p>
+                    <h2 className="fw-bold mb-1" style={{ color: 'var(--text-main)' }}>Billing & Invoices</h2>
+                    <p className="mb-0" style={{ color: 'var(--text-muted)' }}>
+                        Track payments and generate invoices
+                    </p>
                 </div>
                 {isStaff && (
                     <button className="btn btn-primary d-flex align-items-center gap-2" onClick={() => setIsModalOpen(true)}>
                         <Plus size={18} /> Create Bill
                     </button>
                 )}
+            </div>
+
+            {/* Stats Cards */}
+            <div className="row g-3 mb-4">
+                <div className="col-6 col-lg-3">
+                    <motion.div
+                        className="stat-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                    >
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="stat-card-icon" style={{ background: 'var(--primary)' }}>
+                                <DollarSign size={20} />
+                            </div>
+                            <div>
+                                <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>Total Revenue</p>
+                                <h4 className="mb-0 fw-bold" style={{ color: 'var(--text-main)' }}>₹{totalRevenue.toFixed(2)}</h4>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+                <div className="col-6 col-lg-3">
+                    <motion.div
+                        className="stat-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                    >
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="stat-card-icon" style={{ background: 'var(--success)' }}>
+                                <TrendingUp size={20} />
+                            </div>
+                            <div>
+                                <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>Collected</p>
+                                <h4 className="mb-0 fw-bold" style={{ color: 'var(--text-main)' }}>₹{collectedAmount.toFixed(2)}</h4>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+                <div className="col-6 col-lg-3">
+                    <motion.div
+                        className="stat-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="stat-card-icon" style={{ background: 'var(--warning)' }}>
+                                <Clock size={20} />
+                            </div>
+                            <div>
+                                <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>Pending</p>
+                                <h4 className="mb-0 fw-bold" style={{ color: 'var(--text-main)' }}>{pendingBills}</h4>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+                <div className="col-6 col-lg-3">
+                    <motion.div
+                        className="stat-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 }}
+                    >
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="stat-card-icon" style={{ background: 'var(--accent)' }}>
+                                <CheckCircle size={20} />
+                            </div>
+                            <div>
+                                <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>Paid Bills</p>
+                                <h4 className="mb-0 fw-bold" style={{ color: 'var(--text-main)' }}>{paidBills}</h4>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
             </div>
 
             {loading ? (
@@ -219,23 +311,40 @@ const BillingList = () => {
 
             <AnimatePresence>
                 {isModalOpen && (
-                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
                         <motion.div
-                            initial={{ opacity: 0, y: -50 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -50 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
                             className="modal-dialog modal-dialog-centered"
                         >
-                            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                                <div className="modal-header border-bottom-0 bg-light p-4">
-                                    <h5 className="modal-title fw-bold">New Invoice</h5>
-                                    <button type="button" className="btn-close" onClick={() => setIsModalOpen(false)}></button>
+                            <div className="modal-content border-0 shadow-lg" style={{ background: 'var(--bg-card)', borderRadius: '20px', overflow: 'hidden' }}>
+                                <div className="modal-header border-bottom-0 p-4" style={{ background: 'var(--bg-dark)' }}>
+                                    <div className="d-flex align-items-center gap-2">
+                                        <div className="stat-card-icon" style={{ background: 'var(--primary)', width: 40, height: 40 }}>
+                                            <FileText size={20} />
+                                        </div>
+                                        <h5 className="modal-title fw-bold mb-0" style={{ color: 'var(--text-main)' }}>New Invoice</h5>
+                                    </div>
+                                    <button type="button" className="btn-close btn-close-white" onClick={() => setIsModalOpen(false)}></button>
                                 </div>
                                 <div className="modal-body p-4">
                                     <form onSubmit={handleSubmit}>
                                         <div className="mb-3">
-                                            <label className="form-label small fw-bold text-muted">Patient</label>
-                                            <select name="patient_id" className="form-select bg-light border-0" onChange={handleChange} required>
+                                            <label className="form-label small fw-semibold" style={{ color: 'var(--text-muted)' }}>PATIENT</label>
+                                            <select
+                                                name="patient_id"
+                                                className="form-select"
+                                                onChange={handleChange}
+                                                required
+                                                style={{
+                                                    background: 'var(--bg-dark)',
+                                                    border: '1px solid var(--border-dark)',
+                                                    borderRadius: '12px',
+                                                    padding: '12px 16px',
+                                                    color: 'var(--text-main)'
+                                                }}
+                                            >
                                                 <option value="">Select Patient</option>
                                                 {patients.map(p => (
                                                     <option key={p.patient_id} value={p.patient_id}>
@@ -246,34 +355,97 @@ const BillingList = () => {
                                         </div>
                                         <div className="row g-3 mb-3">
                                             <div className="col-6">
-                                                <label className="form-label small fw-bold text-muted">Total Amount ($)</label>
-                                                <input type="number" name="total_amount" className="form-control bg-light border-0" onChange={handleChange} required />
+                                                <label className="form-label small fw-semibold" style={{ color: 'var(--text-muted)' }}>TOTAL AMOUNT (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    name="total_amount"
+                                                    className="form-control"
+                                                    onChange={handleChange}
+                                                    required
+                                                    style={{
+                                                        background: 'var(--bg-dark)',
+                                                        border: '1px solid var(--border-dark)',
+                                                        borderRadius: '12px',
+                                                        padding: '12px 16px',
+                                                        color: 'var(--text-main)'
+                                                    }}
+                                                />
                                             </div>
                                             <div className="col-6">
-                                                <label className="form-label small fw-bold text-muted">Paid Amount ($)</label>
-                                                <input type="number" name="paid_amount" className="form-control bg-light border-0" onChange={handleChange} required />
+                                                <label className="form-label small fw-semibold" style={{ color: 'var(--text-muted)' }}>PAID AMOUNT (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    name="paid_amount"
+                                                    className="form-control"
+                                                    onChange={handleChange}
+                                                    required
+                                                    style={{
+                                                        background: 'var(--bg-dark)',
+                                                        border: '1px solid var(--border-dark)',
+                                                        borderRadius: '12px',
+                                                        padding: '12px 16px',
+                                                        color: 'var(--text-main)'
+                                                    }}
+                                                />
                                             </div>
                                         </div>
                                         <div className="row g-3 mb-4">
                                             <div className="col-6">
-                                                <label className="form-label small fw-bold text-muted">Status</label>
-                                                <select name="payment_status" className="form-select bg-light border-0" onChange={handleChange}>
+                                                <label className="form-label small fw-semibold" style={{ color: 'var(--text-muted)' }}>STATUS</label>
+                                                <select
+                                                    name="payment_status"
+                                                    className="form-select"
+                                                    onChange={handleChange}
+                                                    style={{
+                                                        background: 'var(--bg-dark)',
+                                                        border: '1px solid var(--border-dark)',
+                                                        borderRadius: '12px',
+                                                        padding: '12px 16px',
+                                                        color: 'var(--text-main)'
+                                                    }}
+                                                >
                                                     <option value="Pending">Pending</option>
                                                     <option value="Paid">Paid</option>
                                                     <option value="Partial">Partial</option>
                                                 </select>
                                             </div>
                                             <div className="col-6">
-                                                <label className="form-label small fw-bold text-muted">Date</label>
-                                                <input type="date" name="payment_date" className="form-control bg-light border-0" value={formData.payment_date} onChange={handleChange} required />
+                                                <label className="form-label small fw-semibold" style={{ color: 'var(--text-muted)' }}>DATE</label>
+                                                <input
+                                                    type="date"
+                                                    name="payment_date"
+                                                    className="form-control"
+                                                    value={formData.payment_date}
+                                                    onChange={handleChange}
+                                                    required
+                                                    style={{
+                                                        background: 'var(--bg-dark)',
+                                                        border: '1px solid var(--border-dark)',
+                                                        borderRadius: '12px',
+                                                        padding: '12px 16px',
+                                                        color: 'var(--text-main)'
+                                                    }}
+                                                />
                                             </div>
                                         </div>
                                         <div className="d-flex justify-content-end gap-2">
-                                            <button type="button" className="btn btn-light" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                                            <button type="submit" className="btn btn-primary px-4" disabled={isSubmitting}>
+                                            <button
+                                                type="button"
+                                                className="btn px-4"
+                                                onClick={() => setIsModalOpen(false)}
+                                                style={{
+                                                    background: 'var(--bg-dark)',
+                                                    color: 'var(--text-main)',
+                                                    borderRadius: '10px',
+                                                    border: '1px solid var(--border-dark)'
+                                                }}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button type="submit" className="btn btn-primary px-4" disabled={isSubmitting} style={{ borderRadius: '10px' }}>
                                                 {isSubmitting ? (
                                                     <>
-                                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                        <span className="spinner-border spinner-border-sm me-2" />
                                                         Generating...
                                                     </>
                                                 ) : 'Generate Bill'}

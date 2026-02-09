@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, Search, Stethoscope, Clock, Award, Building } from 'lucide-react';
-import Skeleton, { CardSkeleton } from '../components/Skeleton';
+import { UserPlus, Search, Stethoscope, Award, Building, Users, Clock, Phone, Mail } from 'lucide-react';
+import { CardSkeleton } from '../components/Skeleton';
+import { motion } from 'framer-motion';
 
 const DoctorsList = () => {
     const [doctors, setDoctors] = useState([]);
@@ -40,34 +41,118 @@ const DoctorsList = () => {
         setFilteredDoctors(filtered);
     }, [searchTerm, doctors]);
 
+    // Get unique specializations count
+    const specializations = [...new Set(doctors.map(d => d.specialization))];
+    const departments = [...new Set(doctors.map(d => d.department))];
+
     return (
-        <div className="container-fluid py-4 fade-in">
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-3">
+        <div className="fade-in">
+            {/* Page Header */}
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
                 <div>
-                    <h2 className="fw-bold text-dark">Doctors Directory</h2>
-                    <p className="text-muted mb-0">Find specialists and book appointments</p>
+                    <h2 className="fw-bold mb-1" style={{ color: 'var(--text-main)' }}>Doctors Directory</h2>
+                    <p className="mb-0" style={{ color: 'var(--text-muted)' }}>
+                        Find specialists and book appointments
+                    </p>
                 </div>
 
-                <div className="d-flex align-items-center gap-3 w-100 w-md-auto">
-                    <div className="position-relative flex-grow-1">
-                        <Search className="position-absolute ms-3 translate-middle-y start-0 top-50 text-muted" size={18} />
+                <div className="d-flex align-items-center gap-3">
+                    <div className="position-relative">
+                        <Search size={16} className="position-absolute" style={{ left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                         <input
-                            type="text"
-                            className="form-control ps-5 bg-white border-0 shadow-sm"
-                            placeholder="Search doctors, specialists..."
+                            type="search"
+                            className="search-bar"
+                            placeholder="Search doctors..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ minWidth: '250px' }}
+                            style={{ paddingLeft: '42px', width: '240px' }}
                         />
                     </div>
                     {isAdmin && (
-                        <button className="btn btn-primary d-flex align-items-center gap-2 text-nowrap" onClick={() => navigate('/register')}>
+                        <button className="btn btn-primary d-flex align-items-center gap-2" onClick={() => navigate('/register')}>
                             <UserPlus size={18} /> Add Doctor
                         </button>
                     )}
                 </div>
             </div>
 
+            {/* Stats Summary */}
+            <div className="row g-3 mb-4">
+                <div className="col-6 col-lg-3">
+                    <motion.div
+                        className="stat-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                    >
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="stat-card-icon" style={{ background: 'var(--primary)' }}>
+                                <Users size={20} />
+                            </div>
+                            <div>
+                                <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>Total Doctors</p>
+                                <h4 className="mb-0 fw-bold" style={{ color: 'var(--text-main)' }}>{doctors.length}</h4>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+                <div className="col-6 col-lg-3">
+                    <motion.div
+                        className="stat-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                    >
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="stat-card-icon" style={{ background: 'var(--accent)' }}>
+                                <Stethoscope size={20} />
+                            </div>
+                            <div>
+                                <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>Specializations</p>
+                                <h4 className="mb-0 fw-bold" style={{ color: 'var(--text-main)' }}>{specializations.length}</h4>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+                <div className="col-6 col-lg-3">
+                    <motion.div
+                        className="stat-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="stat-card-icon" style={{ background: 'var(--success)' }}>
+                                <Building size={20} />
+                            </div>
+                            <div>
+                                <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>Departments</p>
+                                <h4 className="mb-0 fw-bold" style={{ color: 'var(--text-main)' }}>{departments.length}</h4>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+                <div className="col-6 col-lg-3">
+                    <motion.div
+                        className="stat-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 }}
+                    >
+                        <div className="d-flex align-items-center gap-3">
+                            <div className="stat-card-icon" style={{ background: 'var(--warning)' }}>
+                                <Clock size={20} />
+                            </div>
+                            <div>
+                                <p className="mb-0 small" style={{ color: 'var(--text-muted)' }}>Available Now</p>
+                                <h4 className="mb-0 fw-bold" style={{ color: 'var(--text-main)' }}>{doctors.length}</h4>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            </div>
+
+            {/* Doctors Grid */}
             {loading ? (
                 <div className="row g-4">
                     {[...Array(8)].map((_, i) => (
@@ -77,45 +162,62 @@ const DoctorsList = () => {
                     ))}
                 </div>
             ) : filteredDoctors.length === 0 ? (
-                <div className="text-center py-5 text-muted">
-                    <Stethoscope size={48} className="mb-3 opacity-25" />
-                    <p>No doctors found matching your search.</p>
+                <div className="text-center py-5">
+                    <Stethoscope size={48} style={{ color: 'var(--text-muted)', opacity: 0.3 }} className="mb-3" />
+                    <h5 style={{ color: 'var(--text-main)' }}>No doctors found</h5>
+                    <p style={{ color: 'var(--text-muted)' }}>Try adjusting your search terms</p>
                 </div>
             ) : (
                 <div className="row g-4">
-                    {filteredDoctors.map(doc => (
+                    {filteredDoctors.map((doc, index) => (
                         <div className="col-md-6 col-lg-4 col-xl-3" key={doc.doctor_id}>
-                            <div className="card-enterprise border-0 shadow-sm h-100 position-relative hover-lift transition-all">
-                                <div className="p-4 d-flex flex-column h-100">
+                            <motion.div
+                                className="stat-card h-100"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 + index * 0.05 }}
+                                whileHover={{ y: -4 }}
+                            >
+                                <div className="d-flex flex-column h-100">
+                                    {/* Header */}
                                     <div className="d-flex align-items-start justify-content-between mb-3">
-                                        <div className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold" style={{ width: 64, height: 64, fontSize: '1.5rem' }}>
+                                        <div
+                                            className="avatar avatar-primary"
+                                            style={{ width: 56, height: 56, fontSize: '1.25rem' }}
+                                        >
                                             {doc.first_name.charAt(0)}{doc.last_name.charAt(0)}
                                         </div>
-                                        <span className="badge bg-light text-dark border">{doc.specialization}</span>
+                                        <span className="badge badge-info">{doc.specialization}</span>
                                     </div>
 
-                                    <h5 className="fw-bold text-dark mb-1">Dr. {doc.first_name} {doc.last_name}</h5>
-                                    <p className="text-muted small mb-3">{doc.qualification}</p>
+                                    {/* Info */}
+                                    <h5 className="fw-bold mb-1" style={{ color: 'var(--text-main)' }}>
+                                        Dr. {doc.first_name} {doc.last_name}
+                                    </h5>
+                                    <p className="small mb-3" style={{ color: 'var(--text-muted)' }}>
+                                        {doc.qualification}
+                                    </p>
 
-                                    <div className="mt-auto pt-3 border-top border-light">
-                                        <div className="d-flex align-items-center gap-2 text-muted small mb-2">
+                                    {/* Details */}
+                                    <div className="mt-auto pt-3" style={{ borderTop: '1px solid var(--border-dark)' }}>
+                                        <div className="d-flex align-items-center gap-2 small mb-2" style={{ color: 'var(--text-muted)' }}>
                                             <Building size={14} />
                                             <span>{doc.department}</span>
                                         </div>
-                                        <div className="d-flex align-items-center gap-2 text-muted small mb-3">
+                                        <div className="d-flex align-items-center gap-2 small mb-3" style={{ color: 'var(--text-muted)' }}>
                                             <Award size={14} />
-                                            <span>{doc.years_of_experience} Years Exp.</span>
+                                            <span>{doc.years_of_experience} Years Experience</span>
                                         </div>
 
                                         <button
-                                            className="btn btn-outline-primary w-100 fw-medium"
+                                            className="btn btn-primary w-100"
                                             onClick={() => navigate(isAdmin ? `/doctors/${doc.doctor_id}` : '/book-appointment')}
                                         >
-                                            {isAdmin ? 'Manage Profile' : 'Book Appointment'}
+                                            {isAdmin ? 'View Profile' : 'Book Appointment'}
                                         </button>
                                     </div>
                                 </div>
-                            </div>
+                            </motion.div>
                         </div>
                     ))}
                 </div>

@@ -92,7 +92,7 @@ const WalkInConsultation = () => {
                 formData.append('file', pdfBlob, `Prescription_WalkIn_${id}.pdf`);
 
                 const token = localStorage.getItem('token');
-                await fetch('http://localhost:8080/Medisphere-Project/backend/api/documents/upload.php', {
+                await fetch('http://localhost:8080/MediSphere/backend/api/documents/upload.php', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
@@ -139,7 +139,7 @@ const WalkInConsultation = () => {
                 formData.append('file', pdfBlob, `Bill_WalkIn_${id}.pdf`);
 
                 const token = localStorage.getItem('token');
-                await fetch('http://localhost:8080/Medisphere-Project/backend/api/documents/upload.php', {
+                await fetch('http://localhost:8080/MediSphere/backend/api/documents/upload.php', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: formData

@@ -25,6 +25,7 @@ import ReportsList from './pages/ReportsList';
 import BedManagement from './pages/BedManagement';
 import FaceAttendance from './pages/FaceAttendance';
 import ConsultationRoom from './pages/ConsultationRoom';
+import Consultation from './pages/Consultation';
 import WalkInConsultation from './pages/WalkInConsultation';
 import PaymentPage from './pages/PaymentPage';
 import VisitorManagement from './pages/VisitorManagement';
@@ -39,6 +40,7 @@ import AttendanceLogs from './pages/AttendanceLogs';
 import Profile from './pages/Profile';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -142,7 +144,7 @@ function App() {
                   <Route
                     path="/face-attendance"
                     element={
-                      <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                      <ProtectedRoute allowedRoles={['admin', 'staff', 'doctor']}>
                         <FaceAttendance />
                       </ProtectedRoute>
                     }
@@ -204,6 +206,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="/consultation"
+                    element={
+                      <ProtectedRoute allowedRoles={['doctor', 'admin']}>
+                        <Consultation />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/consultation/:meetingCode"
                     element={
                       <ProtectedRoute>
@@ -232,6 +242,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={['all']}>
                         <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'staff', 'doctor', 'receptionist', 'patient']}>
+                        <Settings />
                       </ProtectedRoute>
                     }
                   />

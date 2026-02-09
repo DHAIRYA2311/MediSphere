@@ -16,6 +16,7 @@ const FaceAttendance = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [selectedUserId, setSelectedUserId] = useState('');
     const [users, setUsers] = useState([]);
+    const [isDemo, setIsDemo] = useState(false);
 
     const SERVICE_URL = "http://localhost:5001";
 
@@ -33,6 +34,13 @@ const FaceAttendance = () => {
             }
         } catch (e) {
             console.error("Failed to fetch users", e);
+            // Fallback users for demo
+            if (isDemo) {
+                setUsers([
+                    { user_id: 1, first_name: 'John', last_name: 'Doe', role_name: 'Doctor' },
+                    { user_id: 2, first_name: 'Jane', last_name: 'Smith', role_name: 'Nurse' }
+                ]);
+            }
         }
     };
 
@@ -44,6 +52,17 @@ const FaceAttendance = () => {
         const progressInterval = setInterval(() => {
             setScanProgress(prev => Math.min(prev + 5, 95));
         }, 100);
+
+        if (isDemo) {
+            setTimeout(() => {
+                clearInterval(progressInterval);
+                setScanProgress(100);
+                setStatus('success');
+                setMessage('Demo: Attendance Marked Successfully for John Doe');
+                setTimeout(() => setCameraActive(false), 2000);
+            }, 2000);
+            return;
+        }
 
         try {
             const res = await fetch(`${SERVICE_URL}/mark_attendance`, {
@@ -68,7 +87,7 @@ const FaceAttendance = () => {
         } catch (e) {
             clearInterval(progressInterval);
             setStatus('error');
-            setMessage('Face AI Service Offline.');
+            setMessage('Face AI Service Offline. Try Demo Mode.');
         }
     };
 
@@ -84,6 +103,19 @@ const FaceAttendance = () => {
 
         setStatus('loading');
         setMessage(`Capturing Biometrics for ${name}...`);
+
+        if (isDemo) {
+            setTimeout(() => {
+                setStatus('success');
+                setMessage(`Demo: Face Registered for ${name}`);
+                setSelectedUserId('');
+                setTimeout(() => {
+                    setMode('attendance');
+                    resetScanner();
+                }, 2000);
+            }, 2000);
+            return;
+        }
 
         try {
             const res = await fetch(`${SERVICE_URL}/register`, {
@@ -107,7 +139,7 @@ const FaceAttendance = () => {
             }
         } catch (e) {
             setStatus('error');
-            setMessage('Service Offline.');
+            setMessage('Service Offline. Try Demo Mode.');
         }
     };
 
@@ -128,19 +160,31 @@ const FaceAttendance = () => {
                         <h2 className="fw-bold text-dark mb-1">Medisphere Biometrics</h2>
                         <p className="text-muted small mb-0">Intellectual Face Recognition & Attendance System</p>
                     </div>
-                    <div className="d-flex bg-white rounded-3 p-1 shadow-sm border">
-                        <button
-                            className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${mode === 'attendance' ? 'bg-primary text-white shadow-sm' : 'text-muted'}`}
-                            onClick={() => { setMode('attendance'); resetScanner(); }}
-                        >
-                            Attendance
-                        </button>
-                        <button
-                            className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${mode === 'register' ? 'bg-primary text-white shadow-sm' : 'text-muted'}`}
-                            onClick={() => { setMode('register'); resetScanner(); }}
-                        >
-                            Register Face
-                        </button>
+                    <div className="d-flex align-items-center gap-2">
+                        <div className="form-check form-switch me-2">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="demoMode"
+                                checked={isDemo}
+                                onChange={(e) => setIsDemo(e.target.checked)}
+                            />
+                            <label className="form-check-label small fw-bold text-muted" htmlFor="demoMode">Demo Mode</label>
+                        </div>
+                        <div className="d-flex bg-white rounded-3 p-1 shadow-sm border">
+                            <button
+                                className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${mode === 'attendance' ? 'bg-primary text-white shadow-sm' : 'text-muted'}`}
+                                onClick={() => { setMode('attendance'); resetScanner(); }}
+                            >
+                                Attendance
+                            </button>
+                            <button
+                                className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${mode === 'register' ? 'bg-primary text-white shadow-sm' : 'text-muted'}`}
+                                onClick={() => { setMode('register'); resetScanner(); }}
+                            >
+                                Register Face
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -155,11 +199,21 @@ const FaceAttendance = () => {
                                     alt="Biometric Feed"
                                     className="w-100 h-100 object-fit-cover opacity-90"
                                     onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        setStatus('error');
-                                        setMessage("Camera Hardware Not Found");
+                                        if (!isDemo) {
+                                            e.target.style.display = 'none';
+                                            setStatus('error');
+                                            setMessage("Camera Hardware Not Found");
+                                        }
                                     }}
                                 />
+                                {isDemo && (
+                                    <div className="position-absolute inset-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white">
+                                        <div className="text-center opacity-50">
+                                            <p className="mb-0 small font-monospace">DEMO MODE ACTIVE</p>
+                                            <p className="mb-0 small font-monospace">SIMULATED FEED</p>
+                                        </div>
+                                    </div>
+                                )}
                                 {/* HUD Layer */}
                                 <div className="position-absolute inset-0 w-100 h-100 p-4 d-flex flex-column justify-content-between pointer-events-none z-1">
                                     <div className="d-flex justify-content-between align-items-start">

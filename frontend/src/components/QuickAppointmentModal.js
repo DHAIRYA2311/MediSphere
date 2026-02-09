@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    X, Calendar, Clock, User, Stethoscope,
+    X, Calendar, Clock,
     Search, AlertCircle, CheckCircle2, Video,
     Hospital, ChevronRight, Loader2
 } from 'lucide-react';
@@ -109,7 +109,7 @@ const QuickAppointmentModal = ({ isOpen, onClose }) => {
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="bg-primary p-4 text-white d-flex justify-content-between align-items-center">
+                    <div className="p-4 text-white d-flex justify-content-between align-items-center" style={{ background: 'linear-gradient(135deg, #5eaab5 0%, #7fc4ce 100%)' }}>
                         <div>
                             <h4 className="fw-bold mb-0 d-flex align-items-center gap-2">
                                 <Calendar size={24} /> Quick Booking

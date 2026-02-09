@@ -1,226 +1,219 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { motion } from 'framer-motion';
 import {
-    LayoutDashboard,
-    Users,
-    Stethoscope,
-    UserCircle,
-    Calendar,
-    FileText,
-    CreditCard,
-    Activity,
-    BedDouble,
-    ScanFace,
-    LogOut,
-    UserCheck,
-    ShieldCheck,
-    Menu,
-    X,
-    ChevronLeft,
-    ChevronRight,
-    Gift,
-    Scan,
-    ClipboardList,
-    Brain,
-    ShieldAlert,
-    Wallet,
-    Boxes,
-    BarChart3
+    LayoutDashboard, Users, UserCog, Calendar, CreditCard,
+    Settings, LogOut, ChevronLeft, ChevronRight, Activity,
+    Stethoscope, BedDouble, FileText, Shield, UserPlus, Search,
+    Brain, ScanLine, UserCheck, Gift, Eye, ClipboardList, UserRound, ClipboardCheck
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const Sidebar = ({ collapsed, toggleCollapsed }) => {
     const { user, logout } = useAuth();
-    const navigate = useNavigate();
-    const location = useLocation();
 
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
+    const isAdmin = user?.role === 'admin';
+    const isStaff = ['admin', 'staff', 'receptionist'].includes(user?.role);
+    const isDoctor = user?.role === 'doctor';
+    const isPatient = user?.role === 'patient';
 
-    if (!user) return null;
-
-    const role = user.role.toLowerCase();
-
-    // Define sidebar configuration with sections and visibility rules
-    const sidebarConfig = [
-        {
-            title: "Main",
-            roles: ["all"],
-            items: [
-                { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['all'] },
-            ]
-        },
-        {
-            title: "Patient Care",
-            roles: ["admin", "doctor", "receptionist", "patient"],
-            items: [
-                { path: '/appointments', label: role === 'patient' ? 'My Appointments' : 'Appointments', icon: Calendar, roles: ['admin', 'receptionist', 'doctor', 'patient'] },
-                { path: '/patients', label: 'Patients', icon: Activity, roles: ['admin', 'doctor', 'receptionist'] },
-            ]
-        },
-        {
-            title: "Medical Records",
-            roles: ["admin", "doctor", "receptionist", "patient"],
-            items: [
-                { path: '/documents', label: 'Documents', icon: FileText, roles: ['admin', 'doctor', 'receptionist', 'patient'] },
-                { path: '/reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'doctor', 'patient'] },
-            ]
-        },
-        {
-            title: "🤖 AI Tools",
-            roles: ["admin", "doctor", "staff"],
-            items: [
-                { path: '/ai-prediction', label: 'AI Diagnosis', icon: Brain, roles: ['admin', 'doctor'] },
-                { path: '/xray-analysis', label: 'X-Ray Analysis', icon: Scan, roles: ['admin', 'doctor'] },
-                { path: '/face-attendance', label: 'Face Attendance', icon: ScanFace, roles: ['admin', 'staff'] },
-            ]
-        },
-        {
-            title: "Financial",
-            roles: ["admin", "receptionist", "patient"],
-            items: [
-                { path: '/billing', label: 'Billing', icon: CreditCard, roles: ['admin', 'receptionist', 'patient'] },
-                { path: '/insurance', label: 'Insurance & Claims', icon: ShieldCheck, roles: ['admin', 'receptionist', 'patient'] },
-                { path: '/donations', label: 'Donations', icon: Gift, roles: ['admin', 'patient'] },
-            ]
-        },
-        {
-            title: "Operations",
-            roles: ["admin", "receptionist", "staff", "doctor"],
-            items: [
-                { path: '/ward-management', label: 'Ward Management', icon: BedDouble, roles: ['admin', 'receptionist', 'staff', 'doctor'] },
-                { path: '/visitors', label: 'Visitor Logs', icon: UserCheck, roles: ['admin', 'receptionist', 'staff'] },
-            ]
-        },
-        {
-            title: "Security & Logs",
-            roles: ["admin", "staff"],
-            items: [
-                { path: '/attendance-logs', label: 'Attendance Logs', icon: ClipboardList, roles: ['admin', 'staff'] },
-            ]
-        },
-        {
-            title: "Core Management",
-            roles: ["admin"],
-            items: [
-                { path: '/users', label: 'Users', icon: Users, roles: ['admin'] },
-                { path: '/doctors', label: 'Doctors', icon: Stethoscope, roles: ['admin'] },
-                { path: '/staff', label: 'Staff', icon: UserCircle, roles: ['admin'] },
-            ]
-        }
+    // AI TOOLS Section - For Staff & Doctors
+    const aiToolsSection = [
+        { to: '/ai-prediction', label: 'AI Diagnosis', icon: Brain },
+        { to: '/xray-analysis', label: 'X-Ray Analysis', icon: ScanLine },
+        { to: '/face-attendance', label: 'Face Attendance', icon: UserCheck },
     ];
 
-    // Filter configuration based on role
-    const filteredConfig = sidebarConfig.map(section => ({
-        ...section,
-        items: section.items.filter(item =>
-            item.roles.includes('all') || item.roles.includes(role)
-        )
-    })).filter(section => section.items.length > 0);
+    // MAIN MENU Section
+    const mainNavItems = [
+        { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        ...(isPatient ? [
+            { to: '/appointments', label: 'My Appointments', icon: Calendar },
+            { to: '/billing', label: 'My Bills', icon: CreditCard },
+            { to: '/reports', label: 'My Reports', icon: FileText },
+        ] : []),
+        ...(isDoctor ? [
+            { to: '/appointments', label: 'Assessments', icon: Stethoscope },
+            { to: '/consultation', label: 'Consultation', icon: ClipboardList },
+        ] : []),
+        ...(isStaff ? [
+            { to: '/patients', label: 'Patients', icon: Users },
+            { to: '/doctors', label: 'Doctors', icon: UserCog },
+            { to: '/appointments', label: 'Appointments', icon: Calendar },
+            { to: '/ward-management', label: 'Ward Management', icon: BedDouble },
+            { to: '/visitors', label: 'Visitors', icon: Eye },
+            { to: '/reports', label: 'Reports', icon: FileText },
+        ] : []),
+    ];
+
+    // FINANCIAL Section
+    const financialSection = [
+        ...(isStaff ? [
+            { to: '/billing', label: 'Billing', icon: CreditCard },
+            { to: '/insurance', label: 'Insurance', icon: Shield },
+            { to: '/donations', label: 'Donations', icon: Gift },
+        ] : []),
+    ];
+
+    // ADMIN Section
+    const adminSection = [
+        ...(isAdmin ? [
+            { to: '/users', label: 'All Users', icon: UserPlus },
+            { to: '/staff', label: 'Staff', icon: UserRound },
+            { to: '/attendance-logs', label: 'Attendance Logs', icon: ClipboardCheck },
+            { to: '/settings', label: 'Settings', icon: Settings },
+        ] : []),
+    ];
+
+    const renderNavItem = (item) => (
+        <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => `nav-link-custom ${isActive ? 'active' : ''}`}
+            title={collapsed ? item.label : undefined}
+        >
+            <item.icon size={20} />
+            {!collapsed && <span>{item.label}</span>}
+        </NavLink>
+    );
+
+    const renderSection = (title, items) => {
+        if (items.length === 0) return null;
+        return (
+            <div className="mb-3">
+                {!collapsed && <div className="sidebar-section-title">{title}</div>}
+                {items.map(renderNavItem)}
+            </div>
+        );
+    };
 
     return (
-        <motion.div
-            animate={{ width: collapsed ? '80px' : '280px' }}
-            className="sidebar-container d-flex flex-column border-end shadow-sm"
-            style={{
-                height: '100vh',
-                position: 'fixed',
-                zIndex: 1000,
-                background: '#0f172a', // Sidebar dark blue
-                overflow: 'hidden'
-            }}
+        <motion.aside
+            className="sidebar-container d-flex flex-column"
+            animate={{ width: collapsed ? 80 : 280 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
         >
-            {/* Header */}
-            <div className="d-flex align-items-center justify-content-between p-3 mb-2" style={{ height: '70px' }}>
-                <AnimatePresence>
-                    {!collapsed && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="d-flex align-items-center gap-2 overflow-hidden"
-                        >
-                            <div className="bg-primary rounded-3 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
-                                <Activity size={20} className="text-white" />
-                            </div>
-                            <span className="fw-bold fs-5 text-white tracking-tight">Medisphere</span>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <button
-                    onClick={toggleCollapsed}
-                    className="btn btn-link text-white-50 p-1 text-decoration-none hover-white"
-                >
-                    {collapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
-                </button>
-            </div>
-
-            {/* Nav Items */}
-            <div className="flex-grow-1 overflow-y-auto overflow-x-hidden px-2 py-2 no-scrollbar">
-                {filteredConfig.map((section, sIdx) => (
-                    <div key={sIdx} className="mb-3">
-                        {!collapsed && section.title !== "Main" && (
-                            <div className="px-3 mb-2">
-                                <span className="text-white-50 text-uppercase fw-bold tracking-wider" style={{ fontSize: '0.65rem' }}>
-                                    {section.title}
-                                </span>
-                            </div>
-                        )}
-                        <ul className="nav nav-pills flex-column gap-1">
-                            {section.items.map((item) => (
-                                <li className="nav-item" key={item.path}>
-                                    <NavLink
-                                        to={item.path}
-                                        className={({ isActive }) =>
-                                            `nav-link-custom ${isActive ? 'active' : ''} ${collapsed ? 'justify-content-center px-0' : ''}`
-                                        }
-                                        title={collapsed ? item.label : ''}
-                                    >
-                                        <item.icon size={20} strokeWidth={1.5} />
-                                        {!collapsed && <span className="text-truncate">{item.label}</span>}
-                                    </NavLink>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                ))}
-            </div>
-
-            {/* Footer / User Profile */}
-            <div className="p-3 border-top border-secondary border-opacity-25 mt-auto">
-                <div className={`d-flex align-items-center ${collapsed ? 'justify-content-center' : 'gap-3'}`}>
+            {/* Logo/Header */}
+            <div className="p-3 d-flex align-items-center gap-2" style={{ borderBottom: '1px solid var(--border-dark)' }}>
+                <Link to="/dashboard" className="d-flex align-items-center gap-2 text-decoration-none">
                     <div
-                        className="rounded-circle bg-primary d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ width: 40, height: 40, cursor: 'pointer' }}
-                        onClick={() => navigate('/profile')}
+                        className="d-flex align-items-center justify-content-center rounded-xl"
+                        style={{
+                            width: 40,
+                            height: 40,
+                            background: 'linear-gradient(135deg, #1a3a4a 0%, #5eaab5 100%)',
+                            boxShadow: '0 4px 12px rgba(26, 58, 74, 0.25)'
+                        }}
                     >
-                        <span className="fw-bold text-white font-monospace">{user.name.charAt(0)}</span>
+                        <Activity size={22} className="text-white" />
                     </div>
-
                     {!collapsed && (
-                        <div className="overflow-hidden">
-                            <h6 className="m-0 text-white text-truncate fw-semibold" style={{ fontSize: '0.9rem' }}>{user.name}</h6>
-                            <small className="text-white-50 text-capitalize" style={{ fontSize: '0.75rem' }}>{role}</small>
+                        <span className="fw-bold" style={{ fontSize: '1.125rem', color: 'var(--text-main)' }}>
+                            MediSphere
+                        </span>
+                    )}
+                </Link>
+                {!collapsed && (
+                    <button
+                        onClick={toggleCollapsed}
+                        className="btn-icon ms-auto"
+                        style={{ width: 32, height: 32 }}
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                )}
+            </div>
+
+            {/* Search */}
+            {!collapsed && (
+                <div className="p-3">
+                    <div className="position-relative">
+                        <Search size={16} className="position-absolute" style={{ left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input
+                            type="search"
+                            className="search-bar"
+                            placeholder="Search..."
+                            style={{ paddingLeft: '38px' }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Navigation */}
+            <nav className="flex-grow-1 py-2 px-3 overflow-auto">
+                {/* Main Navigation */}
+                {renderSection('MAIN MENU', mainNavItems)}
+
+                {/* AI Tools Section - Staff & Doctors */}
+                {(isStaff || isDoctor) && renderSection('AI TOOLS', aiToolsSection)}
+
+                {/* Financial Section - Staff only */}
+                {renderSection('FINANCIAL', financialSection)}
+
+                {/* Admin Section - Admin only */}
+                {renderSection('ADMIN', adminSection)}
+            </nav>
+
+            {/* Footer - User Info */}
+            <div className="p-3" style={{ borderTop: '1px solid var(--border-dark)' }}>
+                <div className="d-flex align-items-center gap-2">
+                    <div
+                        className="avatar avatar-primary"
+                        style={{
+                            width: 40,
+                            height: 40,
+                            fontSize: '0.875rem',
+                            background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)'
+                        }}
+                    >
+                        {user?.name?.charAt(0) || 'U'}
+                    </div>
+                    {!collapsed && (
+                        <div className="flex-grow-1">
+                            <div className="fw-semibold small" style={{ color: 'var(--text-main)', lineHeight: 1.2 }}>
+                                {user?.name}
+                            </div>
+                            <div className="small text-capitalize" style={{ color: 'var(--text-muted)', lineHeight: 1.2 }}>
+                                {user?.role}
+                            </div>
                         </div>
                     )}
-
                     {!collapsed && (
+                        <div className="d-flex gap-1">
+                            <Link to="/profile" className="btn-icon" style={{ width: 32, height: 32 }} title="Profile">
+                                <Settings size={16} />
+                            </Link>
+                            <button
+                                className="btn-icon"
+                                style={{ width: 32, height: 32 }}
+                                title="Logout"
+                                onClick={logout}
+                            >
+                                <LogOut size={16} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+                {collapsed && (
+                    <div className="d-flex flex-column gap-2 mt-2">
                         <button
-                            onClick={handleLogout}
-                            className="btn btn-link text-white-50 ms-auto p-0"
-                            title="Sign Out"
+                            onClick={toggleCollapsed}
+                            className="btn-icon w-100"
+                            style={{ height: 40 }}
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                        <button
+                            onClick={logout}
+                            className="btn-icon w-100"
+                            style={{ height: 40 }}
                         >
                             <LogOut size={18} />
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
-
-        </motion.div>
+        </motion.aside>
     );
 };
 

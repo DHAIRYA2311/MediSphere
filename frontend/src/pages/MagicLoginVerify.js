@@ -19,7 +19,7 @@ const MagicLoginVerify = () => {
 
         const verifyToken = async () => {
             try {
-                const response = await fetch('http://127.0.0.1:8080/Medisphere-Project/backend/api/auth/verify_magic_link.php', {
+                const response = await fetch('http://localhost:8080/MediSphere/backend/api/auth/verify_magic_link.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token })
