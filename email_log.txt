@@ -1,0 +1,11 @@
+[2026-02-22 11:45:20] TO: doctor2@medisphere.com | SUBJECT: 👨‍⚕️ New Appointment Assigned | REASON: TLS encryption failed
+CONTENT: 
+            Hello Dr. Dhairya Amin,
+            A new patient appointment has been assigned to you.
+            
+                👤 Patient: Dhairya Amin
+                ⏰ Schedule: 2026-02-22 at 10:00
+            
+            Please review the patient's medical history before the consultation.
+        
+--------------------------------------------------

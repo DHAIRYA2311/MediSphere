@@ -1,8 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Search, Filter, MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react';
 
-const DataTable = ({ columns, data, searchable = true, title, keyField = 'id', actions }) => {
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+const DataTable = ({
+    columns,
+    data,
+    searchable = true,
+    title,
+    keyField = 'id',
+    actions,
+    defaultSortKey = null,
+    defaultSortDirection = 'asc'
+}) => {
+    const [sortConfig, setSortConfig] = useState({ key: defaultSortKey, direction: defaultSortDirection });
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(1);
     const rowsPerPage = 10;

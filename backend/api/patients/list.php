@@ -14,8 +14,8 @@ if (!$payload) {
 
 $role = strtolower($payload['role']);
 
-// Only Admin, Doctor, Receptionist can list all patients
-if (!in_array($role, ['admin', 'doctor', 'receptionist'])) {
+// Only Admin, Doctor, Receptionist, Staff can list all patients
+if (!in_array($role, ['admin', 'doctor', 'receptionist', 'staff'])) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Access denied']);
     exit();
@@ -28,12 +28,15 @@ try {
             p.blood_group, 
             p.emergency_contact, 
             p.insurance_number,
+            p.medical_history,
+            u.user_id,
             u.first_name, 
             u.last_name, 
             u.email, 
             u.phone, 
             u.gender, 
-            u.dob 
+            u.dob,
+            u.address
         FROM Patients p
         JOIN Users u ON p.user_id = u.user_id
         ORDER BY u.last_name ASC

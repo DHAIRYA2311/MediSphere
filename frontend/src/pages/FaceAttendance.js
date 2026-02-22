@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../services/api'; // Add api service
 import {
     Camera, UserCheck, ShieldAlert, RefreshCw,
     Maximize2, Zap, User, Clock, CheckCircle2, AlertCircle,
-    ScanFace, ShieldCheck, Fingerprint, ArrowRight, Save, X, Activity
+    ScanFace, ShieldCheck, Fingerprint, ArrowRight, Save, X, Activity,
+    Database, Target, Cpu, Wifi
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PremiumSelect from '../components/PremiumSelect';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 const FaceAttendance = () => {
+    const { user: currentUser } = useAuth();
+    const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
+
     const [mode, setMode] = useState('attendance'); // 'attendance' | 'register'
     const [status, setStatus] = useState(''); // '', 'loading', 'success', 'warning', 'error'
     const [message, setMessage] = useState('');
@@ -17,17 +23,37 @@ const FaceAttendance = () => {
     const [selectedUserId, setSelectedUserId] = useState('');
     const [users, setUsers] = useState([]);
 
-    const SERVICE_URL = "http://localhost:5001";
+    const SERVICE_URL = "http://127.0.0.1:5005";
+
+    const [cameraLoading, setCameraLoading] = useState(true);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        fetchUsers();
-        return () => clearInterval(timer);
-    }, []);
+        if (isAdmin) fetchUsers();
+
+        // Auto-start camera when entering page
+        const initCamera = async () => {
+            setCameraLoading(true);
+            try {
+                await fetch(`${SERVICE_URL}/start_camera`);
+                setCameraLoading(false);
+            } catch (e) {
+                console.error("Camera service offline");
+                setCameraLoading(false);
+            }
+        };
+        initCamera();
+
+        return () => {
+            clearInterval(timer);
+            // Auto-stop camera when leaving page to save hardware resources
+            fetch(`${SERVICE_URL}/stop_camera`).catch(() => { });
+        };
+    }, [isAdmin]);
 
     const fetchUsers = async () => {
         try {
-            const res = await api.get('users/list.php'); // Assuming admin/staff access
+            const res = await api.get('users/list.php');
             if (res.status === 'success') {
                 setUsers(res.data);
             }
@@ -57,7 +83,7 @@ const FaceAttendance = () => {
             if (data.status === 'success') {
                 setStatus('success');
                 setMessage(data.msg);
-                setTimeout(() => setCameraActive(false), 2000);
+                setTimeout(() => setCameraActive(false), 3000);
             } else if (data.status === 'warning') {
                 setStatus('warning');
                 setMessage(data.msg);
@@ -73,9 +99,14 @@ const FaceAttendance = () => {
     };
 
     const registerFace = async () => {
+        if (!isAdmin) {
+            setStatus('error');
+            setMessage('Operation Restricted to Admin.');
+            return;
+        }
         if (!selectedUserId) {
             setStatus('error');
-            setMessage('Please select a user to enroll.');
+            setMessage('Please select a staff member to enroll.');
             return;
         }
 
@@ -100,7 +131,7 @@ const FaceAttendance = () => {
                 setTimeout(() => {
                     setMode('attendance');
                     resetScanner();
-                }, 2000);
+                }, 3000);
             } else {
                 setStatus('error');
                 setMessage(data.msg);
@@ -119,230 +150,134 @@ const FaceAttendance = () => {
     };
 
     return (
-        <div className="container-fluid py-5 bg-light min-vh-100 d-flex align-items-center justify-content-center">
-            <div className="w-100" style={{ maxWidth: '1100px' }}>
+        <div className="container-fluid py-5 min-vh-100 bg-dark-deep text-white">
+            <div className="mx-auto" style={{ maxWidth: '800px' }}>
 
-                {/* Header Section */}
-                <div className="d-flex justify-content-between align-items-end mb-4 px-2">
-                    <div>
-                        <h2 className="fw-bold text-dark mb-1">Medisphere Biometrics</h2>
-                        <p className="text-muted small mb-0">Intellectual Face Recognition & Attendance System</p>
-                    </div>
-                    <div className="d-flex bg-white rounded-3 p-1 shadow-sm border">
+                {/* Minimal Header */}
+                <div className="text-center mb-5">
+                    <h2 className="fw-bold tracking-tight text-uppercase mb-1">Face Attendance</h2>
+                    <div className="d-flex justify-content-center gap-3 mt-3">
                         <button
-                            className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${mode === 'attendance' ? 'bg-primary text-white shadow-sm' : 'text-muted'}`}
+                            className={`btn btn-sm px-4 rounded-pill ${mode === 'attendance' ? 'btn-primary' : 'btn-outline-secondary text-white'}`}
                             onClick={() => { setMode('attendance'); resetScanner(); }}
                         >
-                            Attendance
+                            Mark Attendance
                         </button>
-                        <button
-                            className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${mode === 'register' ? 'bg-primary text-white shadow-sm' : 'text-muted'}`}
-                            onClick={() => { setMode('register'); resetScanner(); }}
-                        >
-                            Register Face
-                        </button>
-                    </div>
-                </div>
-
-                <div className="row g-0 shadow-2xl rounded-4 overflow-hidden border bg-white" style={{ minHeight: '550px' }}>
-
-                    {/* LEFT PANEL: The Scanner Viewport */}
-                    <div className="col-lg-7 bg-black position-relative border-end border-white border-opacity-10" style={{ minHeight: '450px' }}>
-                        {cameraActive ? (
-                            <>
-                                <img
-                                    src={`${SERVICE_URL}/video_feed?t=${Date.now()}`}
-                                    alt="Biometric Feed"
-                                    className="w-100 h-100 object-fit-cover opacity-90"
-                                    onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        setStatus('error');
-                                        setMessage("Camera Hardware Not Found");
-                                    }}
-                                />
-                                {/* HUD Layer */}
-                                <div className="position-absolute inset-0 w-100 h-100 p-4 d-flex flex-column justify-content-between pointer-events-none z-1">
-                                    <div className="d-flex justify-content-between align-items-start">
-                                        <div className="bg-black bg-opacity-40 backdrop-blur-sm border border-white border-opacity-10 p-2 rounded-2">
-                                            <div className="d-flex align-items-center gap-2 text-primary small fw-bold tracking-widest font-monospace">
-                                                <div className="spinner-grow spinner-grow-sm"></div>
-                                                LIVE_ENCRYPTION_ON
-                                            </div>
-                                        </div>
-                                        <div className="text-end font-monospace text-white text-shadow">
-                                            <div className="h4 mb-0 fw-bold">{currentTime.toLocaleTimeString()}</div>
-                                            <div className="small opacity-50">{currentTime.toLocaleDateString()}</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Viewport Brackets */}
-                                    <div className="position-absolute top-50 start-50 translate-middle w-75 h-75 border-cyan-glow">
-                                        <div className="pos-abs top-0 start-0 w-8 h-8 border-t-2 border-l-2 border-primary"></div>
-                                        <div className="pos-abs top-0 end-0 w-8 h-8 border-t-2 border-r-2 border-primary"></div>
-                                        <div className="pos-abs bottom-0 start-0 w-8 h-8 border-b-2 border-l-2 border-primary"></div>
-                                        <div className="pos-abs bottom-0 end-0 w-8 h-8 border-b-2 border-r-2 border-primary"></div>
-
-                                        {/* Horizontal Scan Line */}
-                                        {status === 'loading' && (
-                                            <motion.div
-                                                animate={{ top: ['0%', '100%', '0%'] }}
-                                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                                className="position-absolute w-100 bg-primary shadow-glow-primary"
-                                                style={{ height: '2px', left: 0 }}
-                                            />
-                                        )}
-                                    </div>
-
-                                    <div className="d-flex justify-content-center">
-                                        <div className="bg-black bg-opacity-60 backdrop-blur-md px-4 py-2 rounded-pill border border-white border-opacity-10 text-white small font-monospace tracking-tight">
-                                            {mode === 'attendance' ? 'SYSTEM_WAITING: AUTH_TRIGGER_REQUIRED' : 'SYSTEM_WAITING: BIOMETRIC_ENROLLMENT'}
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white bg-dark p-5">
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="p-4 bg-success bg-opacity-10 rounded-circle mb-4 border border-success border-opacity-20">
-                                    <CheckCircle2 size={80} className="text-success" />
-                                </motion.div>
-                                <h3 className="fw-bold text-success">Identity Confirmed</h3>
-                                <p className="text-muted text-center max-w-sm">Recognition successful. Your participation has been securely logged in the master ledger.</p>
-                            </div>
+                        {isAdmin && (
+                            <button
+                                className={`btn btn-sm px-4 rounded-pill ${mode === 'register' ? 'btn-primary' : 'btn-outline-secondary text-white'}`}
+                                onClick={() => { setMode('register'); resetScanner(); }}
+                            >
+                                Register Face
+                            </button>
                         )}
                     </div>
+                </div>
 
-                    {/* RIGHT PANEL: Controls & Info */}
-                    <div className="col-lg-5 p-5 d-flex flex-column justify-content-between bg-white">
-                        <div>
-                            <div className="d-flex align-items-center gap-3 mb-4">
-                                <div className="bg-primary bg-opacity-10 p-3 rounded-4">
-                                    {mode === 'attendance' ? <ScanFace size={28} className="text-primary" /> : <UserCheck size={28} className="text-primary" />}
-                                </div>
-                                <div>
-                                    <h4 className="fw-bold mb-0">{mode === 'attendance' ? 'Attendance Check' : 'Face Enrollment'}</h4>
-                                    <p className="text-muted small mb-0">{mode === 'attendance' ? 'Biometric verification protocol' : 'Digital identity registration'}</p>
+                <div className="card bg-black border-tech rounded-4 overflow-hidden shadow-2xl position-relative mb-4" style={{ aspectRatio: '4/3' }}>
+                    {cameraActive ? (
+                        <>
+                            <img
+                                src={`${SERVICE_URL}/video_feed?t=${Date.now()}`}
+                                alt="Live Feed"
+                                className="w-100 h-100 object-fit-cover mirror"
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    setStatus('error');
+                                    setMessage("CAMERA_HARDWARE_FAULT");
+                                }}
+                            />
+
+                            {/* Simple Face Mask Feedback */}
+                            <div className="absolute-inset d-flex align-items-center justify-content-center pointer-events-none">
+                                <div className={`face-guide ${status === 'loading' ? 'active' : ''}`}>
+                                    <div className="corner c-tl"></div><div className="corner c-tr"></div>
+                                    <div className="corner c-bl"></div><div className="corner c-br"></div>
                                 </div>
                             </div>
 
-                            <div className="bg-light p-4 rounded-4 border mb-4">
-                                <h6 className="fw-bold text-dark small text-uppercase tracking-wider mb-3">Protocol Requirements</h6>
-                                <ul className="list-unstyled small text-secondary mb-0">
-                                    <li className="d-flex gap-3 mb-3">
-                                        <div className="text-primary"><Activity size={16} /></div>
-                                        <span>Stay within 1-2 feet of the camera for high-accuracy feature extraction.</span>
-                                    </li>
-                                    <li className="d-flex gap-3 mb-3">
-                                        <div className="text-primary"><Clock size={16} /></div>
-                                        <span>Authentication typically completes in under 2.5 seconds.</span>
-                                    </li>
-                                    <li className="d-flex gap-3">
-                                        <div className="text-primary"><ShieldCheck size={16} /></div>
-                                        <span>All data is processed using local GPU-accelerated neural networks.</span>
-                                    </li>
-                                </ul>
-                            </div>
-
-                            {/* Status Area */}
-                            <AnimatePresence mode="wait">
-                                {message && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        className={`p-3 rounded-3 mb-4 d-flex align-items-start gap-3 border ${status === 'success' ? 'bg-success bg-opacity-5 text-success border-success border-opacity-20' :
-                                            status === 'warning' ? 'bg-warning bg-opacity-5 text-dark border-warning border-opacity-20' :
-                                                status === 'error' ? 'bg-danger bg-opacity-5 text-danger border-danger border-opacity-20' :
-                                                    'bg-primary bg-opacity-5 text-primary border-primary border-opacity-20'
-                                            }`}
-                                    >
-                                        <div className="mt-1 shadow-sm">
-                                            {status === 'loading' ? <RefreshCw className="animate-spin" size={18} /> :
-                                                status === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <div className="fw-bold small text-uppercase mb-1">{status === 'loading' ? 'Encrypting...' : status}</div>
-                                            <div className="small opacity-80">{message}</div>
-                                            {status === 'loading' && mode === 'attendance' && (
-                                                <div className="progress mt-2 bg-primary bg-opacity-10" style={{ height: '3px' }}>
-                                                    <motion.div
-                                                        className="progress-bar bg-primary shadow-sm"
-                                                        style={{ width: `${scanProgress}%` }}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="mt-auto">
-                            {mode === 'register' ? (
-                                <div className="mb-4">
-                                    <label className="form-label small fw-bold text-secondary text-uppercase mb-2">Select User for Biometric Link</label>
-                                    <div className="input-group input-group-lg shadow-sm">
-                                        <span className="input-group-text bg-white border-end-0"><User size={20} className="text-muted" /></span>
-                                        <select
-                                            className="form-select bg-white border-start-0 fs-6 ps-1"
-                                            value={selectedUserId}
-                                            onChange={(e) => setSelectedUserId(e.target.value)}
-                                            disabled={status === 'loading'}
-                                        >
-                                            <option value="">-- Choose Staff/User --</option>
-                                            {users.map(u => (
-                                                <option key={u.user_id} value={u.user_id}>
-                                                    {u.first_name} {u.last_name} ({u.role_name || 'User'})
-                                                </option>
-                                            ))}
-                                        </select>
+                            {cameraLoading && (
+                                <div className="absolute-inset d-flex align-items-center justify-content-center bg-black bg-opacity-50 backdrop-blur-sm">
+                                    <div className="text-center">
+                                        <div className="spinner-border text-primary mb-3"></div>
+                                        <div className="small font-monospace text-uppercase tracking-widest">Initialising Hardware...</div>
                                     </div>
                                 </div>
-                            ) : null}
-
-                            <div className="d-grid gap-3">
-                                {!cameraActive ? (
-                                    <button onClick={resetScanner} className="btn btn-dark btn-lg py-3 fw-bold rounded-3 shadow d-flex align-items-center justify-content-center gap-2">
-                                        <RefreshCw size={20} /> Reset Scanner
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={mode === 'attendance' ? markAttendance : registerFace}
-                                        className="btn btn-primary btn-lg py-3 fw-bold rounded-3 shadow d-flex align-items-center justify-content-center gap-2 group"
-                                        disabled={status === 'loading'}
-                                    >
-                                        {status === 'loading' ? 'PROCESSING...' : (
-                                            <>
-                                                {mode === 'attendance' ? (
-                                                    <>IDENTIFY ME <ArrowRight size={20} className="group-hover-translate-x-1 transition-all" /></>
-                                                ) : (
-                                                    <>ENROLL BIOMETRICS <Save size={20} /></>
-                                                )}
-                                            </>
-                                        )}
-                                    </button>
-                                )}
-                            </div>
-                            <div className="text-center mt-3">
-                                <span className="text-muted smaller fw-bold tracking-widest opacity-50"><Fingerprint size={12} className="me-1 mb-1" /> SECURE_ID_V3.0</span>
-                            </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-success bg-opacity-10">
+                            <CheckCircle2 size={80} className="text-success mb-4 animate-bounce" />
+                            <h3 className="text-success fw-bold text-uppercase">Identification Success</h3>
+                            <p className="text-white-50 px-4 text-center">{message}</p>
+                            <button onClick={resetScanner} className="btn btn-primary rounded-pill px-5 mt-3">Next Scan</button>
                         </div>
-                    </div>
+                    )}
                 </div>
+
+                {/* Control & Result Area */}
+                <div className="text-center">
+                    {mode === 'register' && cameraActive && (
+                        <div className="mb-4 mx-auto" style={{ maxWidth: '400px' }}>
+                            <PremiumSelect
+                                label="Enroll Biometrics For"
+                                name="user_id"
+                                value={selectedUserId}
+                                onChange={(e) => setSelectedUserId(e.target.value)}
+                                options={users.filter(u => ['Doctor', 'Staff', 'Receptionist', 'Admin'].includes(u.role_name)).map(u => ({
+                                    value: u.user_id,
+                                    label: `${u.first_name} ${u.last_name} (${u.role_name})`
+                                }))}
+                                placeholder="Search Staff Member..."
+                                dark={true}
+                            />
+                        </div>
+                    )}
+
+                    <div className="mb-4 min-height-status">
+                        <AnimatePresence mode="wait">
+                            {message && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`fw-bold text-uppercase tracking-widest ${status === 'success' ? 'text-success' : status === 'error' ? 'text-danger' : 'text-primary'}`}
+                                >
+                                    {status === 'loading' && <span className="spinner-grow spinner-grow-sm me-2"></span>}
+                                    {message}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {cameraActive && (
+                        <button
+                            className="btn btn-primary btn-lg rounded-pill px-5 py-3 fw-black tracking-widest text-uppercase shadow-glow-primary"
+                            onClick={mode === 'attendance' ? markAttendance : registerFace}
+                            disabled={status === 'loading'}
+                        >
+                            {mode === 'attendance' ? 'Validate My Identity' : 'Enroll Biometrics'}
+                        </button>
+                    )}
+                </div>
+
             </div>
 
             <style>{`
-                .pos-abs { position: absolute; }
-                .border-cyan-glow { pointer-events: none; border: 1px solid rgba(13, 110, 253, 0.1); }
-                .shadow-glow-primary { box-shadow: 0 0 20px rgba(13, 110, 253, 0.6); }
-                .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15); }
-                .animate-spin { animation: spin 1s linear infinite; }
-                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-                .smaller { font-size: 0.65rem; }
-                .group-hover-translate-x-1:hover svg { transform: translateX(4px); }
-                .w-8 { width: 32px; }
-                .h-8 { height: 32px; }
+                .bg-dark-deep { background: #0f172a; }
+                .mirror { transform: scaleX(-1); }
+                .absolute-inset { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+                .border-tech { border: 2px solid rgba(13, 110, 253, 0.2); }
+                .shadow-glow-primary { box-shadow: 0 0 20px rgba(13, 110, 253, 0.4); }
+                .min-height-status { min-height: 30px; }
+                
+                .face-guide { width: 260px; height: 320px; position: relative; border: 1px solid rgba(255,255,255,0.1); border-radius: 40px; transition: all 0.3s; }
+                .face-guide.active { border-color: #0d6efd; box-shadow: 0 0 30px rgba(13,110,253,0.3); }
+                
+                .corner { position: absolute; width: 20px; height: 20px; border-color: #0d6efd; border-style: solid; }
+                .c-tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-radius: 10px 0 0 0; }
+                .c-tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-radius: 0 10px 0 0; }
+                .c-bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-radius: 0 0 0 10px; }
+                .c-br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-radius: 0 0 10px 0; }
             `}</style>
         </div>
     );

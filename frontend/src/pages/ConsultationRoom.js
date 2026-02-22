@@ -14,6 +14,8 @@ const ConsultationRoom = () => {
     const [jitsiApi, setJitsiApi] = useState(null);
 
     // States
+    const [isInitialized, setIsInitialized] = useState(false);
+    const [isJoined, setIsJoined] = useState(false);
     const [isDoctorPresent, setIsDoctorPresent] = useState(false);
     const [statusMessage, setStatusMessage] = useState("Connecting to secure room...");
     const [showStopConfirm, setShowStopConfirm] = useState(false);
@@ -25,7 +27,9 @@ const ConsultationRoom = () => {
 
     // Helper: Doctor Check
     const checkIsDoctor = (displayName) => {
-        return displayName && (displayName.startsWith("Dr.") || displayName.includes("(Doctor)"));
+        if (!displayName) return false;
+        const name = displayName.toLowerCase();
+        return name.startsWith("dr.") || name.includes("(doctor)");
     };
 
     useEffect(() => {
@@ -93,55 +97,80 @@ const ConsultationRoom = () => {
             width: '100%',
             height: '100%',
             parentNode: jitsiContainer.current,
-            lang: 'en',
             userInfo: { displayName: displayName },
             configOverwrite: {
                 startWithAudioMuted: true,
                 startWithVideoMuted: true,
                 prejoinPageEnabled: false,
-                disableDeepLinking: true
+                prejoinConfig: { enabled: false }, // Newer Jitsi key
+                disableDeepLinking: true,
+                enableWelcomePage: false
             },
             interfaceConfigOverwrite: {
                 SHOW_JITSI_WATERMARK: false,
-                SHOW_WATERMARK_FOR_GUESTS: false
+                SHOW_WATERMARK_FOR_GUESTS: false,
+                DEFAULT_REMOTE_DISPLAY_NAME: 'Participant',
+                TOOLBAR_BUTTONS: [
+                    'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
+                    'fodeviceselection', 'hangup', 'profile', 'chat', 'recording',
+                    'livestreaming', 'etherpad', 'sharedvideo', 'settings', 'raisehand',
+                    'videoquality', 'filmstrip', 'invite', 'feedback', 'stats', 'shortcuts',
+                    'tileview', 'videobackgroundblur', 'download', 'help', 'mute-everyone',
+                    'security'
+                ],
             }
         };
 
+        console.log("Initializing Jitsi with Name:", displayName);
         const api = new window.JitsiMeetExternalAPI(domain, options);
         window.jitsiAPIInstance = api;
         setJitsiApi(api);
 
         api.addEventListeners({
             videoConferenceJoined: (event) => {
+                console.log("Local user joined conference");
+                setIsJoined(true);
                 setStatusMessage("You have joined the room.");
-                if (amIDoctor) setIsDoctorPresent(true);
-                else {
+
+                if (amIDoctor) {
+                    setIsDoctorPresent(true);
+                } else {
                     const participants = api.getParticipantsInfo();
-                    if (participants.find(p => checkIsDoctor(p.displayName))) setIsDoctorPresent(true);
-                    else setStatusMessage("Waiting for the Doctor to start the session...");
+                    const doctorFound = participants.find(p => checkIsDoctor(p.displayName));
+                    if (doctorFound) {
+                        setIsDoctorPresent(true);
+                        setStatusMessage("Connected to Doctor.");
+                    } else {
+                        setStatusMessage("Waiting for the Doctor to start the session...");
+                    }
                 }
             },
             participantJoined: (participant) => {
+                console.log("Participant joined:", participant.displayName);
                 if (isPatient && checkIsDoctor(participant.displayName)) {
                     setIsDoctorPresent(true);
                     setStatusMessage("Doctor has joined!");
                 }
             },
             participantLeft: (participant) => {
+                console.log("Participant left:", participant.displayName);
                 if (isPatient && checkIsDoctor(participant.displayName)) {
                     setIsDoctorPresent(false);
-                    setStatusMessage("Doctor has left. Checking for invoice...");
+                    setStatusMessage("Doctor has left the room.");
                     checkStatus();
                 }
             },
             videoConferenceLeft: () => {
+                console.log("Video conference ended");
+                setIsJoined(false);
                 if (amIDoctor) navigate('/dashboard');
                 else {
-                    checkStatus().then(() => { });
+                    checkStatus();
                     navigate('/dashboard');
                 }
             }
         });
+        setIsInitialized(true);
     };
 
     const generateAndUploadPrescription = async (apptId, patientName, patientId, shouldUpload = false) => {
@@ -265,15 +294,36 @@ const ConsultationRoom = () => {
         }
     };
 
+
+    const isPatientInWaiting = !amIDoctor && !isDoctorPresent;
+
     return (
         <div style={{ height: 'calc(100vh - 80px)', position: 'relative' }} className="fade-in bg-dark">
             <div ref={jitsiContainer} style={{ width: '100%', height: '100%' }} />
 
-            {(!amIDoctor && !isDoctorPresent) && (
+            {/* Stage 1: Initial Connection Blocker */}
+            {!isInitialized && (
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.9)', zIndex: 2000 }} className="d-flex flex-column align-items-center justify-content-center text-white text-center p-4">
                     <div className="spinner-border text-primary mb-4" style={{ width: '3rem', height: '3rem' }}></div>
                     <h3 className="fw-bold">{statusMessage}</h3>
-                    <p className="text-white-50">Please wait for the doctor to join.</p>
+                    <p className="text-white-50">Preparing your secure medical consultation...</p>
+                </div>
+            )}
+
+            {/* Stage 2: Joined but Waiting for Doctor (Non-blocking Overlay) */}
+            {isJoined && isPatientInWaiting && (
+                <div style={{
+                    position: 'absolute',
+                    top: '20px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 1500,
+                    pointerEvents: 'none' // Allow interaction with Jitsi underneath
+                }}>
+                    <div className="bg-dark bg-opacity-75 text-white px-4 py-3 rounded-pill shadow-lg border border-primary border-opacity-25 d-flex align-items-center gap-3">
+                        <div className="spinner-grow spinner-grow-sm text-primary" role="status"></div>
+                        <span className="fw-medium">{statusMessage}</span>
+                    </div>
                 </div>
             )}
 

@@ -51,6 +51,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $check_stmt = $pdo->prepare("INSERT INTO Attendance (user_id, date, check_in_time, method) VALUES (?, CURDATE(), CURTIME(), 'Biometric')");
                         try {
                              $check_stmt->execute([$user_id]);
+
+                              // 📧 NEW: Send Attendance Notification
+                              try {
+                                  require_once '../../utils/NotificationService.php';
+                                  // Get Email
+                                  $stmt_em = $pdo->prepare("SELECT email FROM Users WHERE user_id = ?");
+                                  $stmt_em->execute([$user_id]);
+                                  $u_email = $stmt_em->fetchColumn();
+                                  if ($u_email) {
+                                      NotificationService::sendStaffAttendance($u_email, $user_id, $user['first_name'] . ' ' . $user['last_name'], date('H:i:s'), 'Present (Face ID)');
+                                  }
+                              } catch (Exception $e_mail) {}
+
                              $response['status'] = 'success';
                              $response['message'] = "Attendance marked for " . $user['first_name'] . " " . $user['last_name'];
                              $response['user'] = $user;

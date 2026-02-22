@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import DataTable from '../components/DataTable';
 import { UserPlus, LogOut, Search, Clock, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PremiumSelect from '../components/PremiumSelect';
 
 const VisitorManagement = () => {
     const [visitors, setVisitors] = useState([]);
@@ -172,36 +173,19 @@ const VisitorManagement = () => {
                                 </div>
                                 <div className="modal-body p-4">
                                     <form onSubmit={handleSubmit}>
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-bold text-muted">Select Patient</label>
-
-                                            {/* Simple Custom Dropdown with Search */}
-                                            <div className="dropdown w-100">
-                                                <input
-                                                    type="text"
-                                                    className="form-control mb-2"
-                                                    placeholder="Search patient name..."
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                />
-                                                <select
-                                                    className="form-select bg-light border-0"
-                                                    size="5"
-                                                    required
-                                                    value={formData.patient_id}
-                                                    onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-                                                    style={{ height: 'auto', maxHeight: '150px' }}
-                                                >
-                                                    <option value="" disabled>-- Select Patient --</option>
-                                                    {filteredPatients.map(p => (
-                                                        <option key={p.patient_id} value={p.patient_id}>
-                                                            {p.first_name} {p.last_name} ({p.phone})
-                                                        </option>
-                                                    ))}
-                                                    {filteredPatients.length === 0 && <option disabled>No matches found</option>}
-                                                </select>
-                                                <div className="form-text small">Select the patient currently admitted or visiting.</div>
-                                            </div>
+                                        <div className="mb-3 d-flex flex-column">
+                                            <PremiumSelect
+                                                label="Select Patient"
+                                                name="patient_id"
+                                                value={formData.patient_id}
+                                                onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
+                                                options={patients.map(p => ({
+                                                    value: p.patient_id,
+                                                    label: `${p.first_name} ${p.last_name} (${p.phone})`
+                                                }))}
+                                                placeholder="-- Choose Patient --"
+                                            />
+                                            <div className="form-text small mt-1">Select the patient currently admitted or visiting.</div>
                                         </div>
 
                                         <div className="mb-3">
@@ -214,20 +198,20 @@ const VisitorManagement = () => {
                                             />
                                         </div>
 
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-bold text-muted">Relation</label>
-                                            <select
-                                                className="form-select bg-light border-0"
+                                        <div className="mb-3 d-flex flex-column">
+                                            <PremiumSelect
+                                                label="Relation"
+                                                name="relation"
                                                 value={formData.relation}
                                                 onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
-                                                required
-                                            >
-                                                <option value="">-- Select Relation --</option>
-                                                <option value="Family">Family Member</option>
-                                                <option value="Friend">Friend</option>
-                                                <option value="Relative">Relative</option>
-                                                <option value="Other">Other</option>
-                                            </select>
+                                                options={[
+                                                    { value: 'Family', label: 'Family Member' },
+                                                    { value: 'Friend', label: 'Friend' },
+                                                    { value: 'Relative', label: 'Relative' },
+                                                    { value: 'Other', label: 'Other' }
+                                                ]}
+                                                placeholder="-- Select Relation --"
+                                            />
                                         </div>
 
                                         <div className="d-flex justify-content-end gap-2 mt-4">

@@ -14,14 +14,33 @@ if (!$payload || !in_array(strtolower($payload['role']), ['admin', 'staff'])) {
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->bed_id) || !isset($data->bed_number)) {
-    echo json_encode(['status' => 'error', 'message' => 'Missing fields']);
+if (!isset($data->bed_id)) {
+    echo json_encode(['status' => 'error', 'message' => 'Bed ID required']);
     exit();
 }
 
 try {
-    $stmt = $pdo->prepare("UPDATE Beds SET bed_number = ? WHERE bed_id = ?");
-    $stmt->execute([$data->bed_number, $data->bed_id]);
+    $updates = [];
+    $params = [];
+
+    if (isset($data->bed_number)) {
+        $updates[] = "bed_number = ?";
+        $params[] = $data->bed_number;
+    }
+    if (isset($data->status)) {
+        $updates[] = "status = ?";
+        $params[] = $data->status;
+    }
+
+    if (empty($updates)) {
+        echo json_encode(['status' => 'error', 'message' => 'No fields to update']);
+        exit();
+    }
+
+    $params[] = $data->bed_id;
+    $sql = "UPDATE Beds SET " . implode(", ", $updates) . " WHERE bed_id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
 
     echo json_encode(['status' => 'success', 'message' => 'Bed updated successfully']);
 } catch (PDOException $e) {

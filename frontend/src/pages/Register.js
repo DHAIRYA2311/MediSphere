@@ -7,6 +7,7 @@ import {
     Smartphone, HeartPulse
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PremiumSelect from '../components/PremiumSelect';
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -213,16 +214,17 @@ const Register = () => {
                                         />
                                     </div>
                                 </div>
-                                <div className="col-md-6 mb-2">
-                                    <select
+                                <div className="col-md-6 d-flex flex-column">
+                                    <PremiumSelect
                                         name="gender"
-                                        className="form-select form-select-lg bg-light border-0 fs-6 py-3 rounded-3"
-                                        value={formData.gender} onChange={handleChange}
-                                    >
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                                        value={formData.gender}
+                                        onChange={handleChange}
+                                        options={[
+                                            { value: 'Male', label: 'Male' },
+                                            { value: 'Female', label: 'Female' },
+                                            { value: 'Other', label: 'Other' }
+                                        ]}
+                                    />
                                 </div>
                                 <div className="col-12 mb-2">
                                     <textarea

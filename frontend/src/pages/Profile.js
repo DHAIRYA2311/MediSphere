@@ -8,6 +8,8 @@ const Profile = () => {
     const { user: authUser } = useAuth();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState('');
+    const [selectedAppt, setSelectedAppt] = useState(null);
 
     useEffect(() => {
         fetchProfile();
@@ -15,12 +17,16 @@ const Profile = () => {
 
     const fetchProfile = async () => {
         setLoading(true);
+        setErrorMsg('');
         try {
             const res = await api.get('auth/me.php');
             if (res.status === 'success') {
                 setProfile(res.data);
+            } else {
+                setErrorMsg(res.message || 'Failed to load profile');
             }
         } catch (error) {
+            setErrorMsg('Network error occurred');
             console.error("Failed to fetch profile", error);
         } finally {
             setLoading(false);
@@ -37,7 +43,12 @@ const Profile = () => {
         );
     }
 
-    if (!profile) return <div className="p-5 text-center">User not found</div>;
+    if (!profile) return (
+        <div className="p-5 text-center">
+            <h4 className="text-muted">{errorMsg || 'User not found'}</h4>
+            <button className="btn btn-primary mt-3" onClick={fetchProfile}>Retry</button>
+        </div>
+    );
 
     const initials = (profile.first_name?.[0] || '') + (profile.last_name?.[0] || '');
 
@@ -120,6 +131,28 @@ const Profile = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            {profile.designation && (
+                                <div className="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                                    <h5 className="fw-bold text-dark mb-4">Professional Details</h5>
+                                    <div className="row g-4">
+                                        <div className="col-md-6">
+                                            <label className="text-muted small fw-bold text-uppercase mb-2 d-block">Designation</label>
+                                            <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-3">
+                                                <Shield size={20} className="text-primary" />
+                                                <span className="fw-medium text-dark">{profile.designation}</span>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="text-muted small fw-bold text-uppercase mb-2 d-block">Assigned Shift</label>
+                                            <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-3">
+                                                <Clock size={20} className="text-primary" />
+                                                <span className="fw-medium text-dark">{profile.shift || 'General Shift'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="card border-0 shadow-sm rounded-4 p-4">
                                 <h5 className="fw-bold text-dark mb-4">Security & Bio</h5>

@@ -62,6 +62,26 @@ try {
     $pdo->commit();
     echo json_encode(['status' => 'success', 'message' => 'Patient moved successfully']);
 
+    // 📧 NEW: ICU Transfer Notification
+    try {
+        require_once '../../utils/NotificationService.php';
+        // Get Ward Info and Patient Email
+        $stmt_target = $pdo->prepare("SELECT u.user_id, w.ward_name, u.email, u.first_name, u.last_name 
+                                     FROM Beds b 
+                                     JOIN Wards w ON b.ward_id = w.ward_id 
+                                     JOIN Bed_Allocations ba ON ba.allocation_id = ? 
+                                     JOIN Patients p ON ba.patient_id = p.patient_id 
+                                     JOIN Users u ON p.user_id = u.user_id 
+                                     WHERE b.bed_id = ?");
+        $stmt_target->execute([$allocation_id, $data->target_bed_id]);
+        $info = $stmt_target->fetch();
+        
+        if ($info && stripos($info['ward_name'], 'ICU') !== false) {
+            $pName = $info['first_name'] . ' ' . $info['last_name'];
+            NotificationService::sendICUTransfer($info['email'], $info['user_id'], $pName, $info['ward_name']);
+        }
+    } catch (Exception $e_mail) {}
+
 } catch (Exception $e) {
     $pdo->rollBack();
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

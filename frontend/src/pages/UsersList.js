@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import DataTable from '../components/DataTable';
 import { Edit, Trash2, Power, Plus, MoreHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PremiumSelect from '../components/PremiumSelect';
 
 const UsersList = () => {
     const [users, setUsers] = useState([]);
@@ -226,27 +227,37 @@ const UsersList = () => {
                                                 <label className="form-label small fw-bold text-muted">Phone</label>
                                                 <input name="phone" className="form-control bg-light border-0" value={formData.phone} onChange={handleChange} required />
                                             </div>
-                                            <div className="col-md-6">
-                                                <label className="form-label small fw-bold text-muted">Role</label>
-                                                {editingUser ? <input className="form-control bg-light border-0" value={editingUser.role_name} disabled /> : (
-                                                    <select name="role" className="form-select bg-light border-0" value={formData.role} onChange={handleChange}>
-                                                        <option value="Patient">Patient</option>
-                                                        <option value="Doctor">Doctor</option>
-                                                        <option value="Receptionist">Receptionist</option>
-                                                        <option value="Admin">Admin</option>
-                                                    </select>
-                                                )}
+                                            <div className="col-md-6 d-flex flex-column">
+                                                <PremiumSelect
+                                                    label="Role"
+                                                    name="role"
+                                                    value={formData.role}
+                                                    onChange={handleChange}
+                                                    options={[
+                                                        { value: 'Patient', label: 'Patient' },
+                                                        { value: 'Doctor', label: 'Doctor' },
+                                                        { value: 'Receptionist', label: 'Receptionist' },
+                                                        { value: 'Staff', label: 'Staff' },
+                                                        { value: 'Admin', label: 'Admin' }
+                                                    ]}
+                                                    disabled={!!editingUser}
+                                                />
                                             </div>
                                         </div>
                                         {!editingUser && (
                                             <div className="row g-3 mb-3">
-                                                <div className="col-md-6">
-                                                    <label className="form-label small fw-bold text-muted">Gender</label>
-                                                    <select name="gender" className="form-select bg-light border-0" value={formData.gender} onChange={handleChange}>
-                                                        <option value="Male">Male</option>
-                                                        <option value="Female">Female</option>
-                                                        <option value="Other">Other</option>
-                                                    </select>
+                                                <div className="col-md-6 d-flex flex-column">
+                                                    <PremiumSelect
+                                                        label="Gender"
+                                                        name="gender"
+                                                        value={formData.gender}
+                                                        onChange={handleChange}
+                                                        options={[
+                                                            { value: 'Male', label: 'Male' },
+                                                            { value: 'Female', label: 'Female' },
+                                                            { value: 'Other', label: 'Other' }
+                                                        ]}
+                                                    />
                                                 </div>
                                                 <div className="col-md-6">
                                                     <label className="form-label small fw-bold text-muted">DOB</label>

@@ -28,7 +28,7 @@ const MagicLoginVerify = () => {
                 const text = await response.text();
                 try {
                     const data = JSON.parse(text);
-                    if (data.success) {
+                    if (data.status === 'success') {
                         setStatus('success');
                         // SAVE BOTH USER AND TOKEN (AuthContext needs both)
                         localStorage.setItem('user', JSON.stringify(data.user));

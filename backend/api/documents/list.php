@@ -12,24 +12,40 @@ if (!$payload) {
     exit();
 }
 
+$user_id = $payload['id'];
+$role = $payload['role'];
+
 // Optional filter by patient_id
 $patient_id = isset($_GET['patient_id']) ? $_GET['patient_id'] : null;
 
+// Logic: If user is medical staff (admin, staff, doctor, receptionist), they can see all or filter.
+// If user is a patient, they can ONLY see their own documents.
+$is_staff = in_array($role, ['admin', 'staff', 'doctor', 'receptionist']);
+
 try {
-    $sql = "SELECT d.*, p.patient_id, u.first_name, u.last_name 
+    $sql = "SELECT d.*, p.patient_id, u.first_name, u.last_name, u.email, u.phone, u.gender, u.dob, p.blood_group 
             FROM Documents d
             JOIN Patients p ON d.patient_id = p.patient_id
             JOIN Users u ON p.user_id = u.user_id";
+    
+    $params = [];
             
-    if ($patient_id) {
-        $sql .= " WHERE d.patient_id = ?";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$patient_id]);
+    if ($is_staff) {
+        // Staff can filter by patient_id if provided
+        if ($patient_id) {
+            $sql .= " WHERE d.patient_id = ?";
+            $params[] = $patient_id;
+        } else {
+            $sql .= " ORDER BY d.document_id DESC";
+        }
     } else {
-        $sql .= " ORDER BY d.document_id DESC";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute();
+        // Patient can ONLY see their own docs (linked via user_id in payload)
+        $sql .= " WHERE u.user_id = ? ORDER BY d.document_id DESC";
+        $params[] = $user_id;
     }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     
     $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode(['status' => 'success', 'data' => $documents]);

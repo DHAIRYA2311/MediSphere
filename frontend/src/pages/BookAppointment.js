@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import PremiumSelect from '../components/PremiumSelect';
 
 const BookAppointment = () => {
     const [doctors, setDoctors] = useState([]);
     const [formData, setFormData] = useState({
+        department: '',
         doctor_id: '',
         date: '',
         time: '',
@@ -24,6 +26,9 @@ const BookAppointment = () => {
         };
         fetchDoctors();
     }, []);
+
+    const departments = [...new Set(doctors.map(d => d.department))];
+    const filteredDoctors = doctors.filter(d => d.department === formData.department);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -57,16 +62,31 @@ const BookAppointment = () => {
                         {message && <div className="alert alert-danger">{message}</div>}
 
                         <form onSubmit={handleSubmit}>
-                            <div className="mb-4">
-                                <label className="form-label small fw-bold text-muted">Select Doctor</label>
-                                <select name="doctor_id" className="form-select form-control bg-light border-0" onChange={handleChange} required>
-                                    <option value="">-- Choose a Specialist --</option>
-                                    {doctors.map(doc => (
-                                        <option key={doc.doctor_id} value={doc.doctor_id}>
-                                            Dr. {doc.first_name} {doc.last_name} ({doc.specialization})
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="row">
+                                <div className="col-md-6 mb-4 d-flex flex-column">
+                                    <PremiumSelect
+                                        label="Select Department"
+                                        name="department"
+                                        value={formData.department}
+                                        onChange={handleChange}
+                                        options={departments.map(dept => ({ value: dept, label: dept }))}
+                                        placeholder="-- Choose Department --"
+                                    />
+                                </div>
+                                <div className="col-md-6 mb-4 d-flex flex-column">
+                                    <PremiumSelect
+                                        label="Select Specialist"
+                                        name="doctor_id"
+                                        value={formData.doctor_id}
+                                        onChange={handleChange}
+                                        options={filteredDoctors.map(doc => ({
+                                            value: doc.doctor_id,
+                                            label: `Dr. ${doc.first_name} ${doc.last_name} (${doc.specialization})`
+                                        }))}
+                                        placeholder={formData.department ? "-- Choose Specialist --" : "-- Choose Dept First --"}
+                                        disabled={!formData.department}
+                                    />
+                                </div>
                             </div>
                             <div className="row">
                                 <div className="col-md-6 mb-4">

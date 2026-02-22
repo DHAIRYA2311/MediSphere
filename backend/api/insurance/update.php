@@ -41,18 +41,27 @@ if (isset($data->claim_id) && isset($data->status)) {
 
         // 4. Update Billing if Approved
         if ($status === 'Approved') {
-            $approved_amount = $claim['claim_amount'];
-            $new_paid_amount = $claim['current_paid'] + $approved_amount;
-            
-            // Determine new payment status
-            $payment_status = ($new_paid_amount >= $claim['total_amount']) ? 'Paid' : 'Partial';
-            
-            $stmt = $pdo->prepare("UPDATE Billing SET paid_amount = ?, payment_status = ?, payment_date = CURDATE() WHERE bill_id = ?");
-            $stmt->execute([$new_paid_amount, $payment_status, $claim['billing_id']]);
+            // Rule 4: Update billing paid_amount = total_amount, Set payment_status = Paid
+            $stmt = $pdo->prepare("UPDATE Billing SET paid_amount = total_amount, payment_status = 'Paid', payment_date = CURDATE() WHERE bill_id = ?");
+            $stmt->execute([$claim['billing_id']]);
         }
 
         $pdo->commit();
         echo json_encode(['status' => 'success', 'message' => 'Claim processed and Billing updated.']);
+
+        // 📧 NEW: Send Insurance Notification
+        try {
+            require_once '../../utils/NotificationService.php';
+            // Get Patient Data
+            $stmt_pat = $pdo->prepare("SELECT u.user_id, u.email, u.first_name, u.last_name FROM Insurance_Claims ic JOIN Patients p ON ic.patient_id = p.patient_id JOIN Users u ON p.user_id = u.user_id WHERE ic.claim_id = ?");
+            $stmt_pat->execute([$claim_id]);
+            $pat = $stmt_pat->fetch();
+            if ($pat) {
+                $pName = $pat['first_name'] . ' ' . $pat['last_name'];
+                NotificationService::sendInsuranceUpdate($pat['email'], $pat['user_id'], $pName, $status, $claim_id);
+            }
+        } catch (Exception $e_mail) {}
+
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         http_response_code(500);

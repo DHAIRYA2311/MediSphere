@@ -32,44 +32,19 @@ try {
     
     $reset_link = "http://127.0.0.1:3000/reset-password?token=" . $token;
 
-    $sent = false;
-    $log_file = __DIR__ . "/../../../email_log.txt";
-
-    // Try SMTP
-    if (file_exists('../../config/email_config.php') && file_exists('../../utils/SimpleSMTP.php')) {
-        include_once '../../config/email_config.php';
-        include_once '../../utils/SimpleSMTP.php';
-
-        if (defined('SMTP_USER') && SMTP_USER !== 'your_email@gmail.com') {
-            try {
-                $smtp = new SimpleSMTP();
-                $smtp->connect(SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS);
+    // Use Centralized Mailer
+    require_once '../../utils/Mailer.php';
+    
+    $email_body = "
+        <p>Hello,</p>
+        <p>We received a request to reset your Medisphere password. Click the button below to choose a new one:</p>
+        <div style='margin: 30px 0;'>
+            <a href='$reset_link' style='background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Reset Password</a>
+        </div>
+        <p style='color: #666; font-size: 14px;'>This link will expire in 30 minutes.</p>
+    ";
                 
-                $email_body = "
-                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
-                        <h2 style='color: #dc3545;'>Reset Your Password</h2>
-                        <p>Hello,</p>
-                        <p>We received a request to reset your Medisphere password. Click the button below to choose a new one:</p>
-                        <div style='margin: 30px 0;'>
-                            <a href='$reset_link' style='background-color: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Reset Password</a>
-                        </div>
-                        <p style='color: #666; font-size: 14px;'>This link will expire in 30 minutes.</p>
-                        <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                        <p style='color: #999; font-size: 12px;'>If you did not request this, please ignore this email.</p>
-                    </div>
-                ";
-                            
-                $smtp->sendEmail($email, "Reset Your Password - Medisphere", $email_body, SMTP_FROM_EMAIL, SMTP_FROM_NAME);
-                $sent = true;
-            } catch (Exception $e) {
-                @file_put_contents($log_file, "Reset SMTP Failed [$email]: " . $e->getMessage() . "\n", FILE_APPEND);
-            }
-        }
-    }
-
-    if (!$sent) {
-        @file_put_contents($log_file, "Password Reset [$email]: $reset_link\n", FILE_APPEND);
-    }
+    $sent = Mailer::send($email, "Reset Your Password - Medisphere", $email_body);
 
     echo json_encode([
         "success" => true,

@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import DataTable from '../components/DataTable';
 import { FileText, Upload, Filter, ExternalLink, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PremiumSelect from '../components/PremiumSelect';
 
 const API_BASE = "http://localhost:8080/Medisphere-Project/backend"; // Needed for linking files
 
@@ -206,33 +207,31 @@ const DocumentManager = () => {
                                 </div>
                                 <div className="modal-body p-4 pt-0">
                                     <form onSubmit={handleUpload}>
-                                        <div className="mb-3">
-                                            <label className="form-label text-muted small fw-bold">Select Patient</label>
-                                            <select
-                                                className="form-select bg-light border-0 py-2"
+                                        <div className="mb-4">
+                                            <PremiumSelect
+                                                label="Select Patient"
+                                                name="patient_id"
                                                 value={uploadData.patient_id}
                                                 onChange={(e) => setUploadData({ ...uploadData, patient_id: e.target.value })}
-                                                required
-                                            >
-                                                <option value="">-- Patient --</option>
-                                                {patients.map(p => (
-                                                    <option key={p.patient_id} value={p.patient_id}>{p.first_name} {p.last_name}</option>
-                                                ))}
-                                            </select>
+                                                options={patients.map(p => ({
+                                                    value: p.patient_id,
+                                                    label: `${p.first_name} ${p.last_name} (ID: ${p.patient_id})`
+                                                }))}
+                                                placeholder="Search Patient..."
+                                            />
                                         </div>
 
-                                        <div className="mb-3">
-                                            <label className="form-label text-muted small fw-bold">Document Category</label>
-                                            <select
-                                                className="form-select bg-light border-0 py-2"
+                                        <div className="mb-4">
+                                            <PremiumSelect
+                                                label="Document Category"
+                                                name="type"
                                                 value={uploadData.type}
                                                 onChange={(e) => setUploadData({ ...uploadData, type: e.target.value })}
-                                                required
-                                            >
-                                                {categories.map(cat => (
-                                                    <option key={cat} value={cat}>{cat}</option>
-                                                ))}
-                                            </select>
+                                                options={categories.map(cat => ({
+                                                    value: cat,
+                                                    label: cat
+                                                }))}
+                                            />
                                         </div>
 
                                         <div className="mb-4">

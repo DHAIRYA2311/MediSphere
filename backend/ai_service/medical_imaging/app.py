@@ -46,52 +46,77 @@ def analyze_xray():
         return jsonify({"status": "error", "msg": str(e)}), 500
 
 def generate_report(predictions):
-    if not predictions:
-        findings_text = "No significant abnormalities detected above threshold."
-        obs_text = "Lung fields appear clear. Cardiac silhouette is within normal limits."
-    else:
-        findings_text = "\n".join([f"- **{label}**: {score:.2f}% confidence" for label, score in predictions])
-        
-        # Contextual Observations based on top finding
-        top_finding = predictions[0][0]
-        if top_finding == 'Pneumonia':
-            obs_text = "There is suggestive opacity consistent with airspace consolidation."
-        elif top_finding == 'Cardiomegaly':
-            obs_text = "The cardiac silhouette appears enlarged (CTR > 0.5)."
-        elif top_finding == 'Effusion':
-            obs_text = "Blunting of the costophrenic angles is noted, suggestive of fluid."
-        elif top_finding == 'Infiltration':
-            obs_text = "Increased interstitial markings are visible."
-        elif top_finding == 'Mass' or top_finding == 'Nodule':
-            obs_text = "A focal density is observed requiring further characterization."
-        else:
-            obs_text = f"Radiographic features suggestive of {top_finding} are noted."
+    # Mapping for clinical explanations
+    DESCRIPTIONS = {
+        'Atelectasis': "Increased density and partial volume loss in lung segments.",
+        'Cardiomegaly': "Transverse cardiac diameter appears greater than 50% of the thoracic diameter.",
+        'Effusion': "Blunting of the costophrenic angle suggesting fluid accumulation.",
+        'Infiltration': "Ill-defined opacities or interstitial markings suggestive of parenchymal filling.",
+        'Mass': "Focal density greater than 3cm in diameter requiring further assessment.",
+        'Nodule': "Small circumscribed opacity less than 3cm in diameter.",
+        'Pneumonia': "Airspace consolidation pattern often associated with infectious processes.",
+        'Pneumothorax': "Visceral pleural line visible without peripheral lung markings.",
+        'Consolidation': "Airspaces filled with fluid, pus, or blood displacing air.",
+        'Edema': "Diffuse perihilar opacities or Kerley B lines suggesting vascular congestion.",
+        'Emphysema': "Hyperinflation of lung fields with flattened diaphragms.",
+        'Fibrosis': "Reticular opacities and volume loss suggestive of scarring.",
+        'Pleural_Thickening': "Irregularity or thickening of the pleural surface.",
+        'Hernia': "Anomalous presence of abdominal contents within the thoracic cavity."
+    }
+
+    # Filter findings with confidence >= 60%
+    significant_findings = [p for p in predictions if p[1] >= 60.0]
+
+    if not significant_findings:
+        return """
+### Clinical Impression (AI-Assisted)
+No significant radiographic abnormalities were detected above the system threshold (60.00% confidence). The lung fields appear clear and the cardiac silhouette is within normal limits.
+
+### Technical Notes
+Single frontal view limitation. Findings must be correlated with clinical symptoms. Overlapping soft tissue shadows can mimic pathology.
+
+### Safety Disclaimer
+This AI-generated analysis is for clinical assistance only and is not a diagnosis. Final interpretation must be performed by a licensed radiologist.
+"""
+
+    primary = significant_findings[0]
+    secondary = significant_findings[1:]
+
+    # Build Clinical Impression summary
+    primary_label = primary[0]
+    impression_text = f"Radiographic patterns suggestive of {primary_label.lower()} are observed as the dominant feature."
+    if secondary:
+        impression_text += f" Cannot exclude concurrent {secondary[0][0].lower()}."
+    impression_text += " Careful clinical correlation is recommended."
+
+    # Format Primary Suspicion
+    primary_section = f"""
+### Primary Suspicion
+• **{primary[0]}** – {primary[1]/100:.2f} confidence
+{DESCRIPTIONS.get(primary[0], "Radiographic features noted.")}
+"""
+
+    # Format Secondary Considerations
+    secondary_section = ""
+    if secondary:
+        secondary_section = "### Secondary Considerations\n"
+        for label, score in secondary:
+            explanation = DESCRIPTIONS.get(label, "May be considered based on minor radiographic indices.")
+            secondary_section += f"• **{label}** – {score/100:.2f} confidence\n{explanation}\n\n"
 
     return f"""
-### Observations
-{obs_text}
-User Quality Check: The exposure and positioning should be verified by the radiologist.
+### Clinical Impression (AI-Assisted)
+{impression_text}
 
-### Possible Findings (AI-assisted)
-{findings_text}
+{primary_section}
+{secondary_section}
+### Technical Notes
+- Single frontal view limitation (depth and fluid layering assessment restricted).
+- Clinical correlation with patient symptoms (fever, cough, history) is highly recommended.
+- Suggest follow-up imaging or CT correlation for definitive characterization if findings persist.
 
-### Confidence Score
-Detailed probabilities provided above. 
-Note: Model operates on a multi-label classification basis.
-
-### Limitations of Analysis
-The analysis is based on 2D pattern recognition from a single view. 
-Lateral views or CT correlation may be required for confirmation. 
-Overlapping soft tissue shadows can mimic pathology.
-
-### Suggested Next Steps
-- Clinical correlation with patient symptoms (e.g., fever, cough, chest pain).
-- Comparison with prior imaging if available.
-- Consider follow-up imaging or CT chest for ambiguous findings.
-
----
-**Disclaimer**
-This AI-generated analysis is for clinical assistance only and must be reviewed by a licensed doctor before any medical decision.
+### Safety Disclaimer
+This AI-generated analysis is for clinical assistance only and is not a diagnosis. Final interpretation must be performed by a licensed radiologist.
 """
 
 if __name__ == '__main__':

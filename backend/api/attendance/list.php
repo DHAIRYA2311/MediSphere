@@ -33,10 +33,18 @@ try {
                 s.designation
             FROM attendance a
             JOIN users u ON a.user_id = u.user_id
-            LEFT JOIN staff s ON u.user_id = s.user_id
-            ORDER BY a.date DESC, a.check_in_time DESC";
+            LEFT JOIN staff s ON u.user_id = s.user_id";
             
-    $stmt = $pdo->query($sql);
+    if ($role !== 'admin') {
+        $sql .= " WHERE a.user_id = ?";
+        $sql .= " ORDER BY a.date DESC, a.check_in_time DESC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$payload['id']]);
+    } else {
+        $sql .= " ORDER BY a.date DESC, a.check_in_time DESC";
+        $stmt = $pdo->query($sql);
+    }
+    
     $logs = $stmt->fetchAll();
 
     echo json_encode(['status' => 'success', 'data' => $logs]);

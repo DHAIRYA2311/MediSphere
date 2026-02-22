@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Info, FileText, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '../services/api';
 
 const NotificationDropdown = () => {
     const { user } = useAuth();
@@ -14,9 +15,7 @@ const NotificationDropdown = () => {
     const fetchNotifications = async () => {
         if (!user) return;
         try {
-            // Using the PHP listing API
-            const res = await fetch(`http://localhost:80/Medisphere-Project/backend/api/notifications/list.php?user_id=${user.user_id}&limit=10`);
-            const data = await res.json();
+            const data = await api.get(`notifications/list.php?user_id=${user.user_id}&limit=10`);
 
             if (Array.isArray(data)) {
                 setNotifications(data);
@@ -30,11 +29,7 @@ const NotificationDropdown = () => {
 
     const markAsRead = async (id) => {
         try {
-            await fetch('http://localhost:80/Medisphere-Project/backend/api/notifications/mark_read.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notification_id: id })
-            });
+            await api.post('notifications/mark_read.php', { notification_id: id });
 
             // Optimistic update
             setNotifications(prev => prev.map(n =>

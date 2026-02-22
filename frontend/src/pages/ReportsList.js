@@ -3,6 +3,7 @@ import { api, BASE_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { TableSkeleton } from '../components/Skeleton';
 import { CloudUpload, Download, FileText, Activity, User, FileX } from 'lucide-react';
+import PremiumSelect from '../components/PremiumSelect';
 
 const ReportsList = () => {
     const { user } = useAuth();
@@ -209,37 +210,32 @@ const ReportsList = () => {
                                     {/* Hide Patient Select for Patients */}
                                     {user?.role?.toLowerCase() !== 'patient' && (
                                         <div className="mb-3">
-                                            <label className="form-label">Patient</label>
-                                            <select
-                                                className="form-select"
+                                            <PremiumSelect
+                                                label="Patient"
+                                                name="patient_id"
                                                 value={formData.patient_id}
                                                 onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-                                                required
-                                            >
-                                                <option value="">Select Patient</option>
-                                                {patients.map(p => (
-                                                    <option key={p.patient_id} value={p.patient_id}>
-                                                        {p.first_name} {p.last_name} (ID: {p.patient_id})
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                options={patients.map(p => ({
+                                                    value: p.patient_id,
+                                                    label: `${p.first_name} ${p.last_name} (ID: ${p.patient_id})`
+                                                }))}
+                                                placeholder="Search Patient..."
+                                            />
                                         </div>
                                     )}
 
                                     <div className="mb-3">
-                                        <label className="form-label">Referring Doctor</label>
-                                        <select
-                                            className="form-select"
+                                        <PremiumSelect
+                                            label="Referring Doctor"
+                                            name="doctor_id"
                                             value={formData.doctor_id}
                                             onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value })}
-                                        >
-                                            <option value="">Select Doctor</option>
-                                            {doctors.map(d => (
-                                                <option key={d.doctor_id} value={d.doctor_id}>
-                                                    Dr. {d.first_name} {d.last_name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            options={doctors.map(d => ({
+                                                value: d.doctor_id,
+                                                label: `Dr. ${d.first_name} ${d.last_name} (${d.specialization})`
+                                            }))}
+                                            placeholder="Search Doctor..."
+                                        />
                                     </div>
 
                                     <div className="mb-3">

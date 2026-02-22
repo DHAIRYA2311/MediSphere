@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import DataTable from '../components/DataTable';
 import { ShieldCheck, Plus, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PremiumSelect from '../components/PremiumSelect';
 
 const InsuranceClaims = () => {
     const [claims, setClaims] = useState([]);
@@ -187,26 +188,23 @@ const InsuranceClaims = () => {
                                 </div>
                                 <div className="modal-body p-4">
                                     <form onSubmit={handleSubmit}>
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-bold text-muted">Patient</label>
-                                            <select
-                                                className="form-select bg-light border-0"
+                                        <div className="mb-3 d-flex flex-column">
+                                            <PremiumSelect
+                                                label="Patient"
+                                                name="patient_id"
                                                 value={formData.patient_id}
                                                 onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-                                                required
-                                            >
-                                                <option value="">-- Select Patient --</option>
-                                                {patients.map(p => (
-                                                    <option key={p.patient_id} value={p.patient_id}>
-                                                        {p.first_name} {p.last_name} ({p.insurance_number || 'No Policy'})
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                options={patients.map(p => ({
+                                                    value: p.patient_id,
+                                                    label: `${p.first_name} ${p.last_name} (ID: ${p.patient_id}) - ${p.insurance_number || 'No Policy'}`
+                                                }))}
+                                                placeholder="-- Select Patient --"
+                                            />
                                         </div>
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-bold text-muted">Bill / Invoice</label>
-                                            <select
-                                                className="form-select bg-light border-0"
+                                        <div className="mb-3 d-flex flex-column">
+                                            <PremiumSelect
+                                                label="Bill / Invoice"
+                                                name="billing_id"
                                                 value={formData.billing_id}
                                                 onChange={(e) => {
                                                     const selectedBill = bills.find(b => b.bill_id == e.target.value);
@@ -216,16 +214,13 @@ const InsuranceClaims = () => {
                                                         claim_amount: selectedBill ? (selectedBill.total_amount - (selectedBill.paid_amount || 0)) : ''
                                                     });
                                                 }}
-                                                required
+                                                options={availableBills.map(b => ({
+                                                    value: b.bill_id,
+                                                    label: `Bill #${b.bill_id} - Total: $${b.total_amount} (Due: $${b.total_amount - (b.paid_amount || 0)})`
+                                                }))}
+                                                placeholder={formData.patient_id ? "-- Select Unpaid Bill --" : "-- Select Patient First --"}
                                                 disabled={!formData.patient_id}
-                                            >
-                                                <option value="">-- {formData.patient_id ? 'Select Unpaid Bill' : 'Select Patient First'} --</option>
-                                                {availableBills.map(b => (
-                                                    <option key={b.bill_id} value={b.bill_id}>
-                                                        Bill #{b.bill_id} - Total: ${b.total_amount} (Due: ${b.total_amount - (b.paid_amount || 0)})
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label small fw-bold text-muted">Insurance / Policy Number</label>

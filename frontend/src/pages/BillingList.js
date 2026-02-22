@@ -4,11 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import DataTable from '../components/DataTable';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Download, Plus, FileText, DollarSign, Calendar, CheckCircle, CreditCard, ShieldCheck } from 'lucide-react';
+import { Download, Plus, FileText, DollarSign, Calendar, CheckCircle, CreditCard, ShieldCheck, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '../components/Skeleton';
+import { useNavigate, Link } from 'react-router-dom';
+import PremiumSelect from '../components/PremiumSelect';
 
 const BillingList = () => {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [bills, setBills] = useState([]);
     const [patients, setPatients] = useState([]);
@@ -123,7 +126,12 @@ const BillingList = () => {
         {
             key: 'bill_id',
             label: 'ID',
-            render: (row) => <span className="text-secondary fw-mono">#{row.bill_id}</span>
+            sortable: true,
+            render: (row) => (
+                <Link to={`/billing/${row.bill_id}`} className="text-primary fw-mono text-decoration-none hover-underline">
+                    #{row.bill_id}
+                </Link>
+            )
         },
         {
             key: 'first_name',
@@ -182,11 +190,17 @@ const BillingList = () => {
 
     const actions = [
         {
+            label: 'View Bill',
+            icon: Eye,
+            className: 'text-primary',
+            onClick: (row) => navigate(`/billing/${row.bill_id}`)
+        },
+        {
             label: 'Mark as Paid',
             icon: CheckCircle,
             className: 'text-success',
             onClick: (row) => handleStatusUpdate(row.bill_id, 'Paid'),
-            show: (row) => row.payment_status !== 'Paid' && isStaff
+            show: (row) => row.payment_status !== 'Paid' && isStaff && !row.claim_id
         },
         { label: 'Download PDF', icon: Download, onClick: generatePDF }
     ];
@@ -214,6 +228,8 @@ const BillingList = () => {
                     data={bills}
                     actions={actions}
                     keyField="bill_id"
+                    defaultSortKey="bill_id"
+                    defaultSortDirection="desc"
                 />
             )}
 
@@ -233,16 +249,18 @@ const BillingList = () => {
                                 </div>
                                 <div className="modal-body p-4">
                                     <form onSubmit={handleSubmit}>
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-bold text-muted">Patient</label>
-                                            <select name="patient_id" className="form-select bg-light border-0" onChange={handleChange} required>
-                                                <option value="">Select Patient</option>
-                                                {patients.map(p => (
-                                                    <option key={p.patient_id} value={p.patient_id}>
-                                                        {p.first_name} {p.last_name} ({p.email})
-                                                    </option>
-                                                ))}
-                                            </select>
+                                        <div className="mb-4">
+                                            <PremiumSelect
+                                                label="Select Patient"
+                                                name="patient_id"
+                                                value={formData.patient_id}
+                                                onChange={handleChange}
+                                                options={patients.map(p => ({
+                                                    value: p.patient_id,
+                                                    label: `${p.first_name} ${p.last_name} (${p.email})`
+                                                }))}
+                                                placeholder="Search Patient..."
+                                            />
                                         </div>
                                         <div className="row g-3 mb-3">
                                             <div className="col-6">
@@ -255,13 +273,18 @@ const BillingList = () => {
                                             </div>
                                         </div>
                                         <div className="row g-3 mb-4">
-                                            <div className="col-6">
-                                                <label className="form-label small fw-bold text-muted">Status</label>
-                                                <select name="payment_status" className="form-select bg-light border-0" onChange={handleChange}>
-                                                    <option value="Pending">Pending</option>
-                                                    <option value="Paid">Paid</option>
-                                                    <option value="Partial">Partial</option>
-                                                </select>
+                                            <div className="col-6 d-flex flex-column">
+                                                <PremiumSelect
+                                                    label="Status"
+                                                    name="payment_status"
+                                                    value={formData.payment_status}
+                                                    onChange={handleChange}
+                                                    options={[
+                                                        { value: 'Pending', label: 'Pending' },
+                                                        { value: 'Paid', label: 'Paid' },
+                                                        { value: 'Partial', label: 'Partial' }
+                                                    ]}
+                                                />
                                             </div>
                                             <div className="col-6">
                                                 <label className="form-label small fw-bold text-muted">Date</label>

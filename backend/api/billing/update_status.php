@@ -40,6 +40,27 @@ try {
     }
 
     echo json_encode(['status' => 'success', 'message' => 'Bill status updated successfully']);
+
+    // 📧 NEW: Send Payment Confirmation
+    if ($status === 'Paid') {
+        try {
+            require_once '../../utils/NotificationService.php';
+            // Get Bill and Patient details
+            $stmt_bill = $pdo->prepare("SELECT u.user_id, b.paid_amount, b.total_amount, u.email, u.first_name, u.last_name 
+                                       FROM Billing b 
+                                       JOIN Patients p ON b.patient_id = p.patient_id 
+                                       JOIN Users u ON p.user_id = u.user_id 
+                                       WHERE b.bill_id = ?");
+            $stmt_bill->execute([$bill_id]);
+            $bill = $stmt_bill->fetch();
+            
+            if ($bill) {
+                $pName = $bill['first_name'] . ' ' . $bill['last_name'];
+                $txId = "TXN-MED-" . $bill_id . "-" . rand(100,999);
+                NotificationService::sendPaymentReceived($bill['email'], $bill['user_id'], $pName, $bill['paid_amount'], $txId);
+            }
+        } catch (Exception $e_mail) {}
+    }
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

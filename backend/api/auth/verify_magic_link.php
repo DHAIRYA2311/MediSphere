@@ -79,22 +79,35 @@ try {
     if ($stmt->rowCount() > 0) {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
+        // Generate REAL JWT Token
+        require_once '../../utils/jwt.php';
+        $payload = [
+            'id' => $user['user_id'],
+            'name' => $user['first_name'] . ' ' . $user['last_name'],
+            'email' => $user['email'],
+            'role' => strtolower($user['role_name']),
+            'iat' => time(),
+            'exp' => time() + (60 * 60 * 24) // 24 hours
+        ];
+        $jwtToken = JWT::encode($payload);
+
         echo json_encode([
-            "success" => true,
+            "status" => "success",
+            "message" => "Magic login successful",
             "user" => [
-                "user_id" => $user['user_id'],
+                "id" => $user['user_id'],
                 "name" => $user['first_name'] . ' ' . $user['last_name'],
                 "email" => $user['email'],
-                "role" => $user['role_name']
+                "role" => strtolower($user['role_name'])
             ],
-            "token" => "mock_session_token_" . time()
+            "token" => $jwtToken
         ]);
     } else {
-        echo json_encode(["success" => false, "message" => "User not found. Please register first."]);
+        echo json_encode(["status" => "error", "message" => "User not found. Please register first."]);
     }
 
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(["success" => false, "message" => "Server Error: " . $e->getMessage()]);
+    echo json_encode(["status" => "error", "message" => "Server Error: " . $e->getMessage()]);
 }
 ?>

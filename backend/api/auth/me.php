@@ -13,11 +13,15 @@ if (!$payload) {
 }
 
 try {
+    $payload_json = json_encode($payload);
     $user_id = $payload['id'];
+    // error_log("Requesting profile for user_id: " . $user_id);
     
-    // Get full user details
+    // Simplified query for debugging
     $stmt = $pdo->prepare("
-        SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone, u.gender, u.dob, u.address, u.created_at, u.status, r.role_name 
+        SELECT 
+            u.*, 
+            r.role_name
         FROM Users u 
         JOIN Roles r ON u.role_id = r.role_id 
         WHERE u.user_id = ?
@@ -26,9 +30,17 @@ try {
     $user = $stmt->fetch();
 
     if ($user) {
+        if (strtolower($user['role_name']) === 'staff') {
+            $stmt_staff = $pdo->prepare("SELECT designation, shift, staff_id FROM Staff WHERE user_id = ?");
+            $stmt_staff->execute([$user_id]);
+            $staff = $stmt_staff->fetch();
+            if ($staff) {
+                $user = array_merge($user, $staff);
+            }
+        }
         echo json_encode(['status' => 'success', 'data' => $user]);
     } else {
-        echo json_encode(['status' => 'error', 'message' => 'User not found']);
+        echo json_encode(['status' => 'error', 'message' => "User not found (ID: $user_id)"]);
     }
 } catch (PDOException $e) {
     echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);

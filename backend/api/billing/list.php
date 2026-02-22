@@ -28,7 +28,8 @@ try {
             p.user_id as patient_user_id,
             u.first_name, 
             u.last_name, 
-            u.email,
+            u.email, u.phone, u.gender, u.dob,
+            p.blood_group,
             ic.claim_status,
             ic.claim_id
         FROM Billing b
@@ -37,19 +38,29 @@ try {
         LEFT JOIN Insurance_Claims ic ON b.bill_id = ic.billing_id
     ";
 
+    $where = [];
+    $params = [];
+
     if ($role == 'patient') {
         // Find patient_id for this user
         $stmt = $pdo->prepare("SELECT patient_id FROM Patients WHERE user_id = ?");
         $stmt->execute([$user_id]);
         $patient_id = $stmt->fetchColumn();
-        
-        $sql .= " WHERE b.patient_id = $patient_id";
+        $where[] = "b.patient_id = ?";
+        $params[] = $patient_id;
+    } elseif (isset($_GET['patient_id'])) {
+        $where[] = "b.patient_id = ?";
+        $params[] = $_GET['patient_id'];
+    }
+
+    if (!empty($where)) {
+        $sql .= " WHERE " . implode(" AND ", $where);
     }
 
     $sql .= " ORDER BY b.payment_date DESC";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute();
+    $stmt->execute($params);
     $bills = $stmt->fetchAll();
 
     echo json_encode(['status' => 'success', 'data' => $bills]);

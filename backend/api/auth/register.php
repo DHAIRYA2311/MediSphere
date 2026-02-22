@@ -1,6 +1,7 @@
 <?php
 require_once '../../config/cors.php';
 require_once '../../config/db.php';
+require_once '../../utils/Mailer.php';
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -69,6 +70,13 @@ if(isset($data->first_name) && isset($data->last_name) && isset($data->email) &&
         }
 
         $pdo->commit();
+
+        // 📧 NEW: Send Welcome Notification
+        try {
+            require_once '../../utils/NotificationService.php';
+            NotificationService::sendWelcome($email, $user_id, $first_name, $role_name);
+        } catch (Exception $e_mail) {}
+
         echo json_encode(['status' => 'success', 'message' => 'User registered successfully']);
     } catch(Exception $e) {
         $pdo->rollBack();

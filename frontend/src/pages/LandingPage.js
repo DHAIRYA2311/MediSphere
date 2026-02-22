@@ -13,7 +13,9 @@ import {
     Users,
     Award,
     Clock,
-    Shield
+    Shield,
+    Video,
+    Building
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -28,7 +30,8 @@ const LandingPage = () => {
         first_name: '', last_name: '', email: '', phone: '',
         password: '', dob: '', gender: 'Male', address: '',
         appointment_date: '', appointment_time: '',
-        department: '', doctor_id: '', notes: ''
+        department: '', doctor_id: '', notes: '',
+        method: 'Online'
     });
 
     useEffect(() => {
@@ -36,19 +39,18 @@ const LandingPage = () => {
     }, []);
 
     const fetchDoctors = async () => {
-        // We can reuse the doctors list API if it's public or we might need a public one.
-        // Assuming the existing one works with token? Wait, this is a public page.
-        // The list.php usually checks token. We might need a public endpoint or just mock/modify.
-        // For now, let's try calling the existing list, but if it fails (401), we handle it.
-        // Actually, for a landing page, we usually need a specific public endpoint.
-        // Let's assume user is NOT logged in.
-        // I will create a quick public getter or just fetch normally if the API allows.
-        // The previous viewed code for doctors/list.php checks token strictly.
-        // QUICK FIX: I will just use the token if available, or fail gracefully.
-        // Ideally we need `api/public/doctors.php`. I will proceed without fetching distinct doctors dynamically for the *form* dropdown to avoid auth issues, OR I'll create that endpoint now. 
-        // Let's assume for this specific request I just hardcode departments/or create the file quickly.
-        // Actually, I'll create `api/public/doctors_list.php` in a mo.
+        try {
+            const res = await api.get('public/doctors.php');
+            if (res.status === 'success') {
+                setDoctors(res.data);
+            }
+        } catch (e) {
+            console.error("Failed to fetch doctors", e);
+        }
     };
+
+    const departments = [...new Set(doctors.map(d => d.department))];
+    const filteredDoctors = doctors.filter(d => d.department === bookingData.department);
 
     const handleChange = (e) => {
         setBookingData({ ...bookingData, [e.target.name]: e.target.value });
@@ -58,15 +60,8 @@ const LandingPage = () => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            // Use the new public endpoint
-            // Note: api helper might attach token, but here we don't have one? 
-            // The api helper is likely a wrapper around fetch. If no token, it sends none.
-            const res = await fetch('http://localhost:8080/Medisphere-Project/backend/api/public/book_appointment.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(bookingData)
-            });
-            const data = await res.json();
+            const res = await api.post('public/book_appointment.php', bookingData);
+            const data = res; // api.post already returns data.json()
 
             if (data.status === 'success') {
                 // Auto Login
@@ -264,27 +259,47 @@ const LandingPage = () => {
                                                 <h5 className="mb-4 text-dark fw-bold border-top pt-4">Appointment Details</h5>
                                                 <div className="row g-3 mb-3">
                                                     <div className="col-6">
-                                                        <select name="department" className="form-select bg-light border-0" onChange={handleChange} required>
+                                                        <select name="department" className="form-select bg-light border-0" value={bookingData.department} onChange={handleChange} required>
                                                             <option value="">Select Department</option>
-                                                            <option value="Cardiology">Cardiology</option>
-                                                            <option value="Neurology">Neurology</option>
-                                                            <option value="General">General Medicine</option>
-                                                            <option value="Orthopedics">Orthopedics</option>
+                                                            {departments.map(dept => (
+                                                                <option key={dept} value={dept}>{dept}</option>
+                                                            ))}
                                                         </select>
                                                     </div>
                                                     <div className="col-6">
-                                                        {/* Ideally fetch via API */}
-                                                        <select name="doctor_id" className="form-select bg-light border-0" onChange={handleChange} required>
-                                                            <option value="">Select Doctor</option>
-                                                            <option value="1">Dr. Smith (Cardio)</option>
-                                                            <option value="2">Dr. Doe (Neuro)</option>
-                                                            {/* We are hardcoding for the mockup as public API is separate */}
+                                                        <select name="doctor_id" className="form-select bg-light border-0" value={bookingData.doctor_id} onChange={handleChange} required disabled={!bookingData.department}>
+                                                            <option value="">{bookingData.department ? 'Select Doctor' : 'Choose Dept First'}</option>
+                                                            {filteredDoctors.map(doc => (
+                                                                <option key={doc.doctor_id} value={doc.doctor_id}>
+                                                                    Dr. {doc.first_name} {doc.last_name} ({doc.specialization})
+                                                                </option>
+                                                            ))}
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div className="row g-3 mb-4">
                                                     <div className="col-6"><input type="date" name="appointment_date" className="form-control bg-light border-0" onChange={handleChange} required /></div>
                                                     <div className="col-6"><input type="time" name="appointment_time" className="form-control bg-light border-0" onChange={handleChange} required /></div>
+                                                </div>
+
+                                                <h6 className="small fw-bold text-secondary text-uppercase mb-3">Consultation Type</h6>
+                                                <div className="row g-3 mb-4">
+                                                    <div className="col-6">
+                                                        <input type="radio" name="method" value="Online" id="landing-online" className="btn-check" checked={bookingData.method === 'Online'} onChange={handleChange} />
+                                                        <label className="btn btn-outline-primary w-100 p-4 rounded-4 border-2 d-flex flex-column align-items-center justify-content-center gap-2 transition-all" htmlFor="landing-online" style={{ minHeight: '120px' }}>
+                                                            <Video size={32} />
+                                                            <div className="fw-bold">Video Call</div>
+                                                            <div className="small opacity-75">Connect Remotely</div>
+                                                        </label>
+                                                    </div>
+                                                    <div className="col-6">
+                                                        <input type="radio" name="method" value="Walk-in" id="landing-walkin" className="btn-check" checked={bookingData.method === 'Walk-in'} onChange={handleChange} />
+                                                        <label className="btn btn-outline-success w-100 p-4 rounded-4 border-2 d-flex flex-column align-items-center justify-content-center gap-2 transition-all" htmlFor="landing-walkin" style={{ minHeight: '120px' }}>
+                                                            <Building size={32} />
+                                                            <div className="fw-bold">In-Hospital</div>
+                                                            <div className="small opacity-75">Visit the Clinic</div>
+                                                        </label>
+                                                    </div>
                                                 </div>
 
                                                 <button type="submit" className="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow-sm">Confirm & Book Appointment</button>
@@ -338,6 +353,13 @@ const LandingPage = () => {
                     </div>
                 </div>
             </footer>
+            <style>{`
+                .cursor-pointer { cursor: pointer; }
+                .hover-lift { transition: transform 0.2s ease; }
+                .hover-lift:hover { transform: translateY(-5px); }
+                .transition-all { transition: all 0.3s ease; }
+                .ls-1 { letter-spacing: 1px; }
+            `}</style>
         </div>
     );
 };

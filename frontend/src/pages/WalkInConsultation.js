@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
+import PremiumSelect from '../components/PremiumSelect';
 
 const WalkInConsultation = () => {
     const { id } = useParams();
@@ -312,12 +313,17 @@ const WalkInConsultation = () => {
                                     </h6>
                                     <p className="small text-muted mb-4">Transfer patient to a ward if immediate clinical monitoring is required.</p>
                                     <div className="mb-4">
-                                        <select className="form-select bg-light border-0" value={selectedBed} onChange={e => setSelectedBed(e.target.value)}>
-                                            <option value="">-- Choose Priority Bed --</option>
-                                            {freeBeds.map(b => (
-                                                <option key={b.bed_id} value={b.bed_id}>{b.ward_name} - {b.bed_number}</option>
-                                            ))}
-                                        </select>
+                                        <PremiumSelect
+                                            label="Select Priority Bed"
+                                            name="bed_id"
+                                            value={selectedBed}
+                                            onChange={(e) => setSelectedBed(e.target.value)}
+                                            options={freeBeds.map(b => ({
+                                                value: b.bed_id,
+                                                label: `${b.ward_name} - ${b.bed_number}`
+                                            }))}
+                                            placeholder="-- Choose Priority Bed --"
+                                        />
                                     </div>
                                     <button className="btn btn-outline-danger w-100 py-2 rounded-pill fw-bold" onClick={handleAdmit} disabled={isSubmitting || !selectedBed}>
                                         {isSubmitting ? 'Transferring...' : 'Transfer to IPD'}

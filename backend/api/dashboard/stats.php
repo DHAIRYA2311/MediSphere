@@ -75,6 +75,20 @@ try {
             $stats['my_appointments'] = $pdo->query("SELECT COUNT(*) FROM Appointments WHERE patient_id = $patient_id")->fetchColumn();
             $stats['upcoming_appointments'] = $pdo->query("SELECT COUNT(*) FROM Appointments WHERE patient_id = $patient_id AND appointment_date >= CURDATE()")->fetchColumn();
         }
+    } elseif ($role == 'staff') {
+        // Ward occupancy summary
+        try {
+            $total_beds = $pdo->query("SELECT COUNT(*) FROM Beds")->fetchColumn() ?: 1;
+            $occupied_beds = $pdo->query("SELECT COUNT(*) FROM Beds WHERE status = 'Occupied'")->fetchColumn();
+            $stats['occupied_beds'] = round(($occupied_beds / $total_beds) * 100);
+            $stats['available_beds'] = $pdo->query("SELECT COUNT(*) FROM Beds WHERE status = 'Available'")->fetchColumn();
+            $stats['active_visitors'] = $pdo->query("SELECT COUNT(*) FROM Visitors WHERE exit_time IS NULL")->fetchColumn();
+            
+            // Personal attendance summary
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM attendance WHERE user_id = ? AND MONTH(date) = MONTH(CURRENT_DATE())");
+            $stmt->execute([$user_id]);
+            $stats['my_attendance_count'] = $stmt->fetchColumn();
+        } catch (Exception $e) { }
     } elseif ($role == 'receptionist') {
         $stats['today_appointments'] = $pdo->query("SELECT COUNT(*) FROM Appointments WHERE appointment_date = CURDATE()")->fetchColumn();
         $stats['pending_appointments'] = $pdo->query("SELECT COUNT(*) FROM Appointments WHERE status = 'Pending'")->fetchColumn();

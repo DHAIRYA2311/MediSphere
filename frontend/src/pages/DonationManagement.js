@@ -4,6 +4,7 @@ import DataTable from '../components/DataTable';
 import { useAuth } from '../context/AuthContext';
 import { Gift, Plus, Coins, Package, HeartHandshake, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PremiumSelect from '../components/PremiumSelect';
 
 const DonationManagement = () => {
     const { user } = useAuth();
@@ -187,42 +188,40 @@ const DonationManagement = () => {
                                 </div>
                                 <div className="modal-body p-4 pt-0">
                                     <form onSubmit={handleSubmit}>
-                                        <div className="mb-3">
-                                            <label className="form-label small fw-bold text-muted">Beneficiary Patient (Optional)</label>
-                                            <select
-                                                className="form-select bg-light border-0 py-2"
+                                        <div className="mb-4">
+                                            <PremiumSelect
+                                                label="Beneficiary Patient"
+                                                name="patient_id"
                                                 value={formData.patient_id}
                                                 onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-                                            >
-                                                <option value="">-- General Hospital Fund --</option>
-                                                {patients.map(p => (
-                                                    <option key={p.patient_id} value={p.patient_id}>
-                                                        {p.first_name} {p.last_name} (ID: {p.patient_id})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <div className="form-text">Leave empty if the donation is for the hospital in general.</div>
+                                                options={[{ value: '', label: '-- General Hospital Fund --' }, ...patients.map(p => ({
+                                                    value: p.patient_id,
+                                                    label: `${p.first_name} ${p.last_name} (ID: ${p.patient_id})`
+                                                }))]}
+                                                placeholder="Search Patient or select Hospital Fund..."
+                                            />
+                                            <div className="form-text small text-muted mt-1">Leave empty if the donation is for the hospital in general.</div>
                                         </div>
 
                                         <div className="row">
                                             <div className="col-md-6 mb-3">
-                                                <label className="form-label small fw-bold text-muted">Type</label>
-                                                <select
-                                                    className="form-select bg-light border-0 py-2"
+                                                <PremiumSelect
+                                                    label="Donation Type"
+                                                    name="donation_type"
                                                     value={formData.donation_type}
                                                     onChange={(e) => setFormData({ ...formData, donation_type: e.target.value })}
-                                                    required
-                                                >
-                                                    <option value="CSH">Cash / Monetary</option>
-                                                    <option value="ITM">Item / Supply</option>
-                                                    <option value="SRV">Service / Volunteering</option>
-                                                </select>
+                                                    options={[
+                                                        { value: 'CSH', label: 'Cash / Monetary' },
+                                                        { value: 'ITM', label: 'Item / Supply' },
+                                                        { value: 'SRV', label: 'Service / Volunteering' }
+                                                    ]}
+                                                />
                                             </div>
                                             <div className="col-md-6 mb-3">
                                                 <label className="form-label small fw-bold text-muted">Value / Amount</label>
                                                 <input
                                                     type="number"
-                                                    className="form-control bg-light border-0 py-2"
+                                                    className="form-control bg-light border-0 py-2 ms-0"
                                                     value={formData.donation_amount}
                                                     onChange={(e) => setFormData({ ...formData, donation_amount: e.target.value })}
                                                     required

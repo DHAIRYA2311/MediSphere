@@ -6,7 +6,7 @@ require_once '../../utils/jwt.php';
 $data = json_decode(file_get_contents("php://input"), true);
 
 // Required fields for Registration & Booking
-$required = ['first_name', 'last_name', 'email', 'phone', 'password', 'dob', 'gender', 'address', 'appointment_date', 'appointment_time', 'department', 'doctor_id'];
+$required = ['first_name', 'last_name', 'email', 'phone', 'password', 'dob', 'gender', 'address', 'appointment_date', 'appointment_time', 'department', 'doctor_id', 'method'];
 
 foreach ($required as $field) {
     if (empty($data[$field])) {
@@ -64,11 +64,23 @@ try {
     }
 
     // 4. Create Appointment
+    $method = $data['method'] ?? 'Online';
+    $meeting_code = ($method === 'Online') ? 'medisphere-' . uniqid() . '-' . rand(1000, 9999) : null;
+    $notes = $data['notes'] ?? 'Initial Booking';
+
     $stmt = $pdo->prepare("
-        INSERT INTO Appointments (patient_id, doctor_id, appointment_date, appointment_time, booking_method, status, notes)
-        VALUES (?, ?, ?, ?, 'Online', 'Confirmed', ?)
+        INSERT INTO Appointments (patient_id, doctor_id, appointment_date, appointment_time, booking_method, status, notes, meeting_code)
+        VALUES (?, ?, ?, ?, ?, 'Confirmed', ?, ?)
     ");
-    $stmt->execute([$patient_id, $data['doctor_id'], $data['appointment_date'], $data['appointment_time'], $data['notes'] ?? 'Initial Booking']);
+    $stmt->execute([
+        $patient_id, 
+        $data['doctor_id'], 
+        $data['appointment_date'], 
+        $data['appointment_time'], 
+        $method, 
+        $notes, 
+        $meeting_code
+    ]);
 
     $pdo->commit();
 
@@ -77,9 +89,10 @@ try {
         'id' => $user_id,
         'email' => $data['email'],
         'role' => 'Patient',
-        'name' => $data['first_name'] . ' ' . $data['last_name']
+        'name' => $data['first_name'] . ' ' . $data['last_name'],
+        'exp' => time() + (24 * 60 * 60) // Adding expiry for good measure
     ];
-    $jwt = JWT::generate_token($token_payload);
+    $jwt = JWT::encode($token_payload);
 
     echo json_encode([
         'status' => 'success', 

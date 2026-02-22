@@ -12,7 +12,8 @@ import {
     CreditCard,
     UserCheck,
     Clock,
-    FileText
+    FileText,
+    BedDouble
 } from 'lucide-react';
 import {
     AreaChart,
@@ -131,9 +132,63 @@ const Dashboard = () => {
                         </div>
                     </>
                 )}
+                {role === 'staff' && (
+                    <>
+                        <div className="col-md-3">
+                            <KPICard loading={loading} title="Ward Occupancy" value={`${stats?.occupied_beds || 0}%`} icon={BedDouble} color="danger" subtext="Capacity used" />
+                        </div>
+                        <div className="col-md-3">
+                            <KPICard loading={loading} title="Available Beds" value={stats?.available_beds || 0} icon={BedDouble} color="success" subtext="Ready for admission" />
+                        </div>
+                        <div className="col-md-3">
+                            <KPICard loading={loading} title="Active Visitors" value={stats?.active_visitors || 0} icon={UserCheck} color="info" subtext="Currently in facility" />
+                        </div>
+                        <div className="col-md-3">
+                            <KPICard loading={loading} title="My Attendance" value={stats?.my_attendance_count || 0} icon={Clock} color="warning" subtext="Logs this month" />
+                        </div>
+                    </>
+                )}
             </div>
 
-            {/* Charts Section */}
+            {/* Logistics & Alerts Section */}
+            <div className="row g-4 mb-4">
+                <div className={`${role === 'admin' ? 'col-lg-12' : 'col-lg-8'}`}>
+                    <div className="card-enterprise border-0 shadow-sm p-4 h-100">
+                        <div className="d-flex justify-content-between align-items-center mb-4">
+                            <h5 className="fw-bold mb-0">Recent Logistics Activity</h5>
+                            <button className="btn btn-sm btn-light rounded-pill px-3">View All</button>
+                        </div>
+                        <div className="d-flex flex-column gap-3">
+                            <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-4">
+                                <div className="bg-success bg-opacity-10 p-2 rounded-circle text-success"><Activity size={18} /></div>
+                                <div className="flex-grow-1">
+                                    <div className="fw-bold text-dark small">Ward 4B - Bed 12 Cleaned</div>
+                                    <div className="text-muted small">Sanitization completed by housekeeping.</div>
+                                </div>
+                                <div className="text-muted small">10m ago</div>
+                            </div>
+                            <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-4">
+                                <div className="bg-primary bg-opacity-10 p-2 rounded-circle text-primary"><UserCheck size={18} /></div>
+                                <div className="flex-grow-1">
+                                    <div className="fw-bold text-dark small">Security Alert: New Visitor Enrolled</div>
+                                    <div className="text-muted small">Visitor logged for Patient: Dhairya Shah.</div>
+                                </div>
+                                <div className="text-muted small">25m ago</div>
+                            </div>
+                            <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-4">
+                                <div className="bg-warning bg-opacity-10 p-2 rounded-circle text-warning"><Clock size={18} /></div>
+                                <div className="flex-grow-1">
+                                    <div className="fw-bold text-dark small">Shift Change Handover</div>
+                                    <div className="text-muted small">Morning shift staff successfully logged out.</div>
+                                </div>
+                                <div className="text-muted small">1h ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Charts Section (Admin Only) */}
             {role === 'admin' && (
                 <div className="row g-4 mb-4">
                     <div className="col-lg-8">

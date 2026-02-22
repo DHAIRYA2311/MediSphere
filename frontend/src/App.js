@@ -21,6 +21,7 @@ import DoctorProfile from './pages/DoctorProfile';
 import UsersList from './pages/UsersList';
 import StaffList from './pages/StaffList';
 import BillingList from './pages/BillingList';
+import BillDetails from './pages/BillDetails';
 import ReportsList from './pages/ReportsList';
 import BedManagement from './pages/BedManagement';
 import FaceAttendance from './pages/FaceAttendance';
@@ -39,6 +40,9 @@ import AttendanceLogs from './pages/AttendanceLogs';
 import Profile from './pages/Profile';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import StaffProfile from './pages/StaffProfile';
+import Settings from './pages/Settings';
+import MonitoringLogs from './pages/MonitoringLogs';
 
 function App() {
   return (
@@ -120,6 +124,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'receptionist', 'patient']}>
                         <BillingList />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/billing/:billId"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'receptionist', 'patient']}>
+                        <BillDetails />
                       </ProtectedRoute>
                     }
                   />
@@ -248,6 +260,30 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={['admin', 'receptionist', 'doctor']}>
                         <DoctorProfile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/staff-profile"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'staff', 'receptionist']}>
+                        <StaffProfile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <Settings />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/monitoring"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <MonitoringLogs />
                       </ProtectedRoute>
                     }
                   />

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 
-const QuickAppointmentModal = ({ isOpen, onClose }) => {
+const QuickAppointmentModal = ({ isOpen, onClose, initialPatient = null }) => {
     const [step, setStep] = useState(1); // 1: Select Patient, 2: Select Doctor, 3: Details & Confirm
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -26,18 +26,38 @@ const QuickAppointmentModal = ({ isOpen, onClose }) => {
         notes: ''
     });
 
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [newPatientData, setNewPatientData] = useState({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        gender: 'Other',
+        dob: '2000-01-01',
+        address: 'Direct Registration',
+        password: 'pass123',
+        role: 'Patient'
+    });
+
     useEffect(() => {
         if (isOpen) {
             fetchInitialData();
             // Reset state when opening
-            setStep(1);
-            setSelectedPatient(null);
-            setSelectedDoctor(null);
             setStatus('');
             setMessage('');
             setSearchQuery('');
+            setSelectedDoctor(null);
+            setIsRegistering(false);
+
+            if (initialPatient) {
+                setSelectedPatient(initialPatient);
+                setStep(2);
+            } else {
+                setSelectedPatient(null);
+                setStep(1);
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, initialPatient]);
 
     const fetchInitialData = async () => {
         setLoading(true);
@@ -60,6 +80,39 @@ const QuickAppointmentModal = ({ isOpen, onClose }) => {
         p.phone?.includes(searchQuery) ||
         p.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const handleRegisterPatient = async () => {
+        setSubmitting(true);
+        setStatus('');
+        setMessage('');
+        try {
+            const res = await api.post('auth/register.php', newPatientData);
+            if (res.status === 'success') {
+                // Refresh list and find the patient
+                const pRes = await api.get('patients/list.php');
+                if (pRes.status === 'success') {
+                    setPatients(pRes.data);
+                    const newlyCreated = pRes.data.find(p => p.email === newPatientData.email);
+                    if (newlyCreated) {
+                        setSelectedPatient(newlyCreated);
+                        setStep(2);
+                        setIsRegistering(false);
+                    } else {
+                        setStatus('error');
+                        setMessage('Patient registered but could not be selected. Please search.');
+                    }
+                }
+            } else {
+                setStatus('error');
+                setMessage(res.message || 'Registration failed');
+            }
+        } catch (err) {
+            setStatus('error');
+            setMessage('Registration error');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const handleBooking = async () => {
         setSubmitting(true);
@@ -144,46 +197,108 @@ const QuickAppointmentModal = ({ isOpen, onClose }) => {
                                 {/* Step 1: Select Patient */}
                                 {step === 1 && (
                                     <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
-                                        <div className="input-group mb-4 shadow-sm border rounded-pill overflow-hidden">
-                                            <span className="input-group-text bg-white border-0 ps-3">
-                                                <Search size={18} className="text-muted" />
-                                            </span>
-                                            <input
-                                                type="text"
-                                                className="form-control border-0 py-2 fs-6"
-                                                placeholder="Search by name, phone or email..."
-                                                value={searchQuery}
-                                                onChange={e => setSearchQuery(e.target.value)}
-                                                autoFocus
-                                            />
-                                        </div>
-
-                                        <div className="list-group list-group-flush rounded-3 border">
-                                            {loading ? (
-                                                <div className="p-4 text-center text-muted"><Loader2 className="animate-spin mb-2 mx-auto" /> Loading database...</div>
-                                            ) : filteredPatients.length > 0 ? (
-                                                filteredPatients.slice(0, 5).map(p => (
+                                        {!isRegistering ? (
+                                            <>
+                                                <div className="d-flex justify-content-between align-items-center mb-3">
+                                                    <h6 className="fw-bold text-muted mb-0">Select Patient</h6>
                                                     <button
-                                                        key={p.patient_id}
-                                                        className="list-group-item list-group-item-action p-3 d-flex align-items-center justify-content-between"
-                                                        onClick={() => { setSelectedPatient(p); setStep(2); }}
+                                                        className="btn btn-sm btn-primary rounded-pill px-3"
+                                                        onClick={() => setIsRegistering(true)}
                                                     >
-                                                        <div className="d-flex align-items-center gap-3">
-                                                            <div className="bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: 40, height: 40 }}>
-                                                                {p.first_name[0]}
-                                                            </div>
-                                                            <div>
-                                                                <div className="fw-bold text-dark">{p.first_name} {p.last_name}</div>
-                                                                <div className="small text-muted">{p.phone}</div>
-                                                            </div>
-                                                        </div>
-                                                        <ChevronRight size={18} className="text-muted" />
+                                                        + Register New
                                                     </button>
-                                                ))
-                                            ) : (
-                                                <div className="p-5 text-center text-muted">No patients found.</div>
-                                            )}
-                                        </div>
+                                                </div>
+                                                <div className="input-group mb-4 shadow-sm border rounded-pill overflow-hidden">
+                                                    <span className="input-group-text bg-white border-0 ps-3">
+                                                        <Search size={18} className="text-muted" />
+                                                    </span>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control border-0 py-2 fs-6"
+                                                        placeholder="Search by name, phone or email..."
+                                                        value={searchQuery}
+                                                        onChange={e => setSearchQuery(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
+
+                                                <div className="list-group list-group-flush rounded-3 border">
+                                                    {loading ? (
+                                                        <div className="p-4 text-center text-muted"><Loader2 className="animate-spin mb-2 mx-auto" /> Loading database...</div>
+                                                    ) : filteredPatients.length > 0 ? (
+                                                        filteredPatients.slice(0, 5).map(p => (
+                                                            <button
+                                                                key={p.patient_id}
+                                                                className="list-group-item list-group-item-action p-3 d-flex align-items-center justify-content-between"
+                                                                onClick={() => { setSelectedPatient(p); setStep(2); }}
+                                                            >
+                                                                <div className="d-flex align-items-center gap-3">
+                                                                    <div className="bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: 40, height: 40 }}>
+                                                                        {p.first_name[0]}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="fw-bold text-dark">{p.first_name} {p.last_name}</div>
+                                                                        <div className="small text-muted">{p.phone}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <ChevronRight size={18} className="text-muted" />
+                                                            </button>
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-5 text-center text-muted">No patients found.</div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="registration-form">
+                                                <div className="d-flex justify-content-between align-items-center mb-3">
+                                                    <h6 className="fw-bold text-primary mb-0">Patient Registration</h6>
+                                                    <button className="btn btn-sm text-secondary p-0 fw-bold" onClick={() => setIsRegistering(false)}>Back to List</button>
+                                                </div>
+                                                <div className="row g-3">
+                                                    <div className="col-md-6">
+                                                        <label className="form-label small fw-bold text-muted">First Name</label>
+                                                        <input type="text" className="form-control" value={newPatientData.first_name} onChange={e => setNewPatientData({ ...newPatientData, first_name: e.target.value })} />
+                                                    </div>
+                                                    <div className="col-md-6">
+                                                        <label className="form-label small fw-bold text-muted">Last Name</label>
+                                                        <input type="text" className="form-control" value={newPatientData.last_name} onChange={e => setNewPatientData({ ...newPatientData, last_name: e.target.value })} />
+                                                    </div>
+                                                    <div className="col-md-6">
+                                                        <label className="form-label small fw-bold text-muted">Email</label>
+                                                        <input type="email" className="form-control" value={newPatientData.email} onChange={e => setNewPatientData({ ...newPatientData, email: e.target.value })} />
+                                                    </div>
+                                                    <div className="col-md-6">
+                                                        <label className="form-label small fw-bold text-muted">Phone</label>
+                                                        <input type="text" className="form-control" value={newPatientData.phone} onChange={e => setNewPatientData({ ...newPatientData, phone: e.target.value })} />
+                                                    </div>
+                                                    <div className="col-md-6">
+                                                        <label className="form-label small fw-bold text-muted">Gender</label>
+                                                        <select className="form-select" value={newPatientData.gender} onChange={e => setNewPatientData({ ...newPatientData, gender: e.target.value })}>
+                                                            <option value="Male">Male</option>
+                                                            <option value="Female">Female</option>
+                                                            <option value="Other">Other</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-md-6">
+                                                        <label className="form-label small fw-bold text-muted">DOB</label>
+                                                        <input type="date" className="form-control" value={newPatientData.dob} onChange={e => setNewPatientData({ ...newPatientData, dob: e.target.value })} />
+                                                    </div>
+                                                </div>
+                                                {message && status === 'error' && (
+                                                    <div className="alert alert-danger p-2 small mt-3 mb-0">
+                                                        <AlertCircle size={14} className="me-2" /> {message}
+                                                    </div>
+                                                )}
+                                                <button
+                                                    className="btn btn-primary w-100 mt-4 py-3 fw-bold shadow-sm"
+                                                    onClick={handleRegisterPatient}
+                                                    disabled={submitting || !newPatientData.first_name || !newPatientData.email}
+                                                >
+                                                    {submitting ? <Loader2 className="animate-spin mx-auto" /> : 'Register & Continue'}
+                                                </button>
+                                            </div>
+                                        )}
                                     </motion.div>
                                 )}
 

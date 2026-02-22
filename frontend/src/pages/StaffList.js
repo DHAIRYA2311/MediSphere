@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import DataTable from '../components/DataTable';
-import { Edit, Plus, User, Moon, Sun, Camera, ScanFace } from 'lucide-react';
+import { Edit, Plus, User, Moon, Sun, Camera, ScanFace, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PremiumSelect from '../components/PremiumSelect';
 
 const StaffList = () => {
     const [staff, setStaff] = useState([]);
@@ -20,7 +21,7 @@ const StaffList = () => {
         password: '', designation: 'Nurse', shift: 'Day', gender: 'Female', dob: '', address: ''
     });
 
-    const SERVICE_URL = "http://localhost:5001";
+    const SERVICE_URL = "http://127.0.0.1:5005";
 
     useEffect(() => {
         fetchStaff();
@@ -64,11 +65,17 @@ const StaffList = () => {
         setIsModalOpen(true);
     };
 
-    const handleRegisterFaceClick = (s) => {
+    const handleRegisterFaceClick = async (s) => {
         setSelectedStaffForFace(s);
         setFaceStatus('');
         setFaceMessage('');
         setIsFaceModalOpen(true);
+        try { fetch(`${SERVICE_URL}/start_camera`); } catch (e) { }
+    };
+
+    const closeFaceModal = () => {
+        setIsFaceModalOpen(false);
+        try { fetch(`${SERVICE_URL}/stop_camera`); } catch (e) { }
     };
 
     const handleRegisterFaceConfirm = async () => {
@@ -82,7 +89,7 @@ const StaffList = () => {
             const res = await fetch(`${SERVICE_URL}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: fullName })
+                body: JSON.stringify({ user_id: selectedStaffForFace.user_id })
             });
             const data = await res.json();
 
@@ -169,6 +176,7 @@ const StaffList = () => {
     ];
 
     const actions = [
+        { label: 'View Profile', icon: Eye, onClick: (s) => window.location.href = `/staff-profile?id=${s.user_id}`, className: 'text-info' },
         { label: 'Edit Staff', icon: Edit, onClick: openModal },
         { label: 'Register Face', icon: ScanFace, onClick: handleRegisterFaceClick, className: 'text-success' }
     ];
@@ -239,12 +247,17 @@ const StaffList = () => {
                                                 <label className="form-label small fw-bold text-muted">Designation</label>
                                                 <input name="designation" className="form-control bg-light border-0" value={formData.designation} onChange={handleChange} required placeholder="e.g. Nurse" />
                                             </div>
-                                            <div className="col-md-6">
-                                                <label className="form-label small fw-bold text-muted">Shift</label>
-                                                <select name="shift" className="form-select bg-light border-0" value={formData.shift} onChange={handleChange}>
-                                                    <option value="Day">Day</option>
-                                                    <option value="Night">Night</option>
-                                                </select>
+                                            <div className="col-md-6 d-flex flex-column">
+                                                <PremiumSelect
+                                                    label="Shift"
+                                                    name="shift"
+                                                    value={formData.shift}
+                                                    onChange={handleChange}
+                                                    options={[
+                                                        { value: 'Day', label: 'Day' },
+                                                        { value: 'Night', label: 'Night' }
+                                                    ]}
+                                                />
                                             </div>
                                         </div>
                                         <div className="row g-3 mb-3">
@@ -252,13 +265,18 @@ const StaffList = () => {
                                                 <label className="form-label small fw-bold text-muted">Phone</label>
                                                 <input name="phone" className="form-control bg-light border-0" value={formData.phone} onChange={handleChange} required />
                                             </div>
-                                            <div className="col-md-6">
-                                                <label className="form-label small fw-bold text-muted">Gender</label>
-                                                <select name="gender" className="form-select bg-light border-0" value={formData.gender} onChange={handleChange}>
-                                                    <option value="Female">Female</option>
-                                                    <option value="Male">Male</option>
-                                                    <option value="Other">Other</option>
-                                                </select>
+                                            <div className="col-md-6 d-flex flex-column">
+                                                <PremiumSelect
+                                                    label="Gender"
+                                                    name="gender"
+                                                    value={formData.gender}
+                                                    onChange={handleChange}
+                                                    options={[
+                                                        { value: 'Female', label: 'Female' },
+                                                        { value: 'Male', label: 'Male' },
+                                                        { value: 'Other', label: 'Other' }
+                                                    ]}
+                                                />
                                             </div>
                                         </div>
                                         <div className="mb-3">
@@ -300,7 +318,7 @@ const StaffList = () => {
                                         <h5 className="modal-title fw-bold">Register Face</h5>
                                         <p className="mb-0 text-white-50 small">For {selectedStaffForFace?.first_name} {selectedStaffForFace?.last_name}</p>
                                     </div>
-                                    <button type="button" className="btn-close btn-close-white" onClick={() => setIsFaceModalOpen(false)}></button>
+                                    <button type="button" className="btn-close btn-close-white" onClick={closeFaceModal}></button>
                                 </div>
                                 <div className="modal-body p-0 text-center bg-black">
                                     <div style={{ minHeight: 300 }}>

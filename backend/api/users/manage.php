@@ -102,6 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($_GET['id'])) {
             } elseif (strtolower($data->role) == 'receptionist') {
                 $stmt = $pdo->prepare("INSERT INTO Receptionist (user_id, shift, created_at) VALUES (?, 'Morning', NOW())");
                 $stmt->execute([$user_id]);
+            } elseif (strtolower($data->role) == 'staff') {
+                $stmt = $pdo->prepare("INSERT INTO Staff (user_id, designation, shift) VALUES (?, 'Nurse', 'Morning')");
+                $stmt->execute([$user_id]);
             }
 
             echo json_encode(['status' => 'success', 'message' => 'User created successfully']);

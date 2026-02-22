@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Edit2, Trash2, Save, X, User, Briefcase, Phone, MapPin, Activity } from 'lucide-react';
+import PremiumSelect from '../components/PremiumSelect';
 
 const DoctorProfile = () => {
     const { id } = useParams();
@@ -180,10 +181,15 @@ const DoctorProfile = () => {
                                         <div className="group">
                                             <label className="form-label text-muted small fw-bold">Status</label>
                                             {isEditing ? (
-                                                <select name="user_status" className="form-select bg-light border-0" value={formData.user_status} onChange={handleChange}>
-                                                    <option value="Active">Active</option>
-                                                    <option value="Inactive">Inactive</option>
-                                                </select>
+                                                <PremiumSelect
+                                                    name="user_status"
+                                                    value={formData.user_status}
+                                                    onChange={handleChange}
+                                                    options={[
+                                                        { value: 'Active', label: 'Active' },
+                                                        { value: 'Inactive', label: 'Inactive' }
+                                                    ]}
+                                                />
                                             ) : (
                                                 <div>
                                                     <span className={`badge ${doctor.user_status === 'Active' ? 'bg-success' : 'bg-danger'} bg-opacity-25 text-${doctor.user_status === 'Active' ? 'success' : 'danger'} border border-${doctor.user_status === 'Active' ? 'success' : 'danger'} px-3 py-2 rounded-pill`}>

@@ -26,7 +26,9 @@ import {
     ShieldAlert,
     Wallet,
     Boxes,
-    BarChart3
+    BarChart3,
+    Settings as SettingsIcon,
+    Terminal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -51,6 +53,7 @@ const Sidebar = ({ collapsed, toggleCollapsed }) => {
             roles: ["all"],
             items: [
                 { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['all'] },
+                { path: '/staff-profile', label: 'Staff Profile', icon: UserCircle, roles: ['admin', 'staff', 'receptionist'] },
             ]
         },
         {
@@ -100,6 +103,7 @@ const Sidebar = ({ collapsed, toggleCollapsed }) => {
             roles: ["admin", "staff"],
             items: [
                 { path: '/attendance-logs', label: 'Attendance Logs', icon: ClipboardList, roles: ['admin', 'staff'] },
+                { path: '/monitoring', label: 'Monitoring & Logs', icon: Terminal, roles: ['admin'] },
             ]
         },
         {
@@ -109,6 +113,13 @@ const Sidebar = ({ collapsed, toggleCollapsed }) => {
                 { path: '/users', label: 'Users', icon: Users, roles: ['admin'] },
                 { path: '/doctors', label: 'Doctors', icon: Stethoscope, roles: ['admin'] },
                 { path: '/staff', label: 'Staff', icon: UserCircle, roles: ['admin'] },
+            ]
+        },
+        {
+            title: "Administration",
+            roles: ["admin"],
+            items: [
+                { path: '/settings', label: 'System Settings', icon: SettingsIcon, roles: ['admin'] },
             ]
         }
     ];

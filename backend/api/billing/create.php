@@ -35,14 +35,27 @@ try {
     $stmt = $pdo->prepare("INSERT INTO Billing (patient_id, appointment_id, total_amount, paid_amount, payment_status, payment_date) VALUES (?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $data->patient_id,
-        $data->appointment_id ?? null, // Optional
+        $data->appointment_id ?? null,
         $data->total_amount,
         $data->paid_amount ?? 0,
         $data->payment_status ?? 'Pending',
         $data->payment_date ?? date('Y-m-d')
     ]);
+    $bill_id = $pdo->lastInsertId();
 
-    echo json_encode(['status' => 'success', 'message' => 'Bill created successfully']);
+    // 📧 NEW: Send Invoice Notification
+    try {
+        require_once '../../utils/NotificationService.php';
+        $stmt_pat = $pdo->prepare("SELECT u.user_id, u.email, u.first_name, u.last_name FROM Patients p JOIN Users u ON p.user_id = u.user_id WHERE p.patient_id = ?");
+        $stmt_pat->execute([$data->patient_id]);
+        $pat = $stmt_pat->fetch();
+        if ($pat) {
+            $pName = $pat['first_name'] . ' ' . $pat['last_name'];
+            NotificationService::sendInvoiceGenerated($pat['email'], $pat['user_id'], $pName, $data->total_amount, $bill_id);
+        }
+    } catch (Exception $e_mail) {}
+
+    echo json_encode(['status' => 'success', 'message' => 'Bill created successfully', 'bill_id' => $bill_id]);
 } catch (PDOException $e) {
     echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
 }

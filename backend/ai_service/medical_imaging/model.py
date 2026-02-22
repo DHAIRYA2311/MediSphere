@@ -73,8 +73,8 @@ def predict_image(model, device, image_path):
     # Format Results
     results = []
     for i, label in enumerate(LABELS):
-        score = probs[i] * 100
-        if score > 20.0: # Threshold for display (Low for ImageNet weights, normally 50%)
+        score = float(probs[i] * 100)
+        if score >= 0.0: # Filter at the app layer (app.py) for the final report
             results.append((label, score))
     
     results.sort(key=lambda x: x[1], reverse=True)

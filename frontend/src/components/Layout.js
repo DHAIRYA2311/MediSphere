@@ -39,12 +39,9 @@ const Layout = ({ children }) => {
 
             {/* Main Content Wrapper */}
             <motion.div
-                className="d-flex flex-column flex-grow-1"
-                animate={{ marginLeft: collapsed ? '80px' : '280px' }}
-                style={{
-                    minHeight: '100vh',
-                    transition: 'margin-left 0.3s ease' // Fallback for motion if needed, but motion should handle it
-                }}
+                className="d-flex flex-column min-vh-100 w-100"
+                animate={{ paddingLeft: collapsed ? '80px' : '280px' }}
+                transition={{ duration: 0.3 }}
             >
                 {/* Navbar */}
                 <Navbar toggleSidebar={toggleCollapsed} collapsed={collapsed} />
